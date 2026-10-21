@@ -18,7 +18,7 @@ use crate::services::settings::{DraftBook, EffectiveKeys, ManagerConfigFile, Sch
 use crate::services::snapshot::SnapshotBuilder;
 use crate::services::telemetry::Telemetry;
 use crate::services::toast::ToastQueue;
-use crate::structs::capture::PendingCaptures;
+use crate::structs::capture::{PendingCaptures, ScreenshotLayers};
 use crate::structs::clash::ClashReport;
 use crate::structs::descriptor::{ApplyMode, Capability, Chord, Descriptor, FieldKind, SettingField};
 use crate::structs::event::{KeybindPhase, ModEvent};
@@ -212,11 +212,16 @@ impl ManagerService {
         self.publish();
     }
 
-    /// Books a screenshot of the next Present, written to `path` as PNG, and returns its sequence. See
-    /// `CaptureBook::request` for the rules.
-    pub fn request_capture(&mut self, index: ModIndex, path: &Path) -> Result<u32, CaptureError> {
+    /// Books a screenshot of the next Present at the capture point `layers`, written to `path` as PNG, and returns
+    /// its sequence. See `CaptureBook::request` for the rules.
+    pub fn request_capture(
+        &mut self,
+        index: ModIndex,
+        path: &Path,
+        layers: ScreenshotLayers,
+    ) -> Result<u32, CaptureError> {
         self.registry.get(index).ok_or(CaptureError::UnknownMod)?;
-        self.captures.request(&self.arbiter, index, path)
+        self.captures.request(&self.arbiter, index, path, layers)
     }
 
     /// True when the mod in `index` may ask for a capture: it holds an active `Hud` or `Overlay` lease.
@@ -325,6 +330,11 @@ impl ManagerService {
         Ok(())
     }
 
+    /// The mod with a focused text field: the one whose last frame reported `wants_keyboard`.
+    pub fn keyboard_owner(&self) -> Option<ModIndex> {
+        self.replies.keyboard_owner(&self.snapshot.load().layers)
+    }
+
     /// Places one input event, pushes its keybind and raw events to the mods and its blocked toast
     /// to the toast queue, and returns the decision for the caller (cancel the game event, toggle or
     /// feed the panel). On focus loss every held key is released to the mods that got its down
@@ -339,7 +349,7 @@ impl ManagerService {
             panel_open: self.panel.is_open(),
             toggle_chord: self.config.toggle_chord,
             pointer_owner: self.pointer_layer().map(|entry| entry.mod_index),
-            keyboard_owner: self.replies.keyboard_owner(&self.snapshot.load().layers),
+            keyboard_owner: self.keyboard_owner(),
             over_menu_button: self.panel.over_menu_button(),
             registry: &self.registry,
             arbiter: &self.arbiter,

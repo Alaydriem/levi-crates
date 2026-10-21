@@ -219,3 +219,24 @@ fn menu_button_is_hidden_while_the_panel_is_open_and_when_disabled_in_config() {
     assert_eq!(disabled, 0);
     assert_eq!(disabled_rect, None);
 }
+
+#[test]
+fn the_manager_layer_is_always_the_last_layer_of_the_frame() {
+    let host = TestHost::new();
+    let claims = [("Hud", "Shared"), ("Overlay", "Shared")];
+    let first = TestClient::register(&host, &Descriptors::with_claims("first", &claims, ""), TestMesh::triangle());
+    let second = TestClient::register(&host, &Descriptors::with_claims("second", &claims, ""), TestMesh::triangle());
+    for client in [&first, &second] {
+        client.acquire(AmmCapability::Hud);
+        client.acquire(AmmCapability::Overlay);
+    }
+
+    host.key(KEY_F10, true, TestHost::CTRL | TestHost::SHIFT, 0);
+    host.key(KEY_F10, false, TestHost::CTRL | TestHost::SHIFT, 1);
+    let open: Vec<Vec<u8>> = (2..5).map(|now_ms| TestHost::owners(&host.frame(now_ms))).collect();
+
+    for owners in &open {
+        assert_eq!(owners.len(), 5);
+        assert_eq!(owners.iter().position(|owner| *owner == TestHost::MANAGER), Some(owners.len() - 1));
+    }
+}

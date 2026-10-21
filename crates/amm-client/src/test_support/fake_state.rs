@@ -33,6 +33,8 @@ pub struct FakeState {
     pub screenshot_sequence: u32,
     // The path text of each `request_screenshot` call
     pub screenshot_requests: Vec<String>,
+    // The `layers` byte of each `request_screenshot_layers` call, whose path is also in `screenshot_requests`
+    pub screenshot_layers: Vec<u8>,
     // The answer to `held_by_other` per capability; a capability not in the map is not held by another mod
     pub held_by_other: HashMap<Capability, bool>,
     pub texture_grant: TextureGrant,
@@ -60,6 +62,7 @@ impl FakeState {
             screenshot_status: AmmStatus::Ok,
             screenshot_sequence: 1,
             screenshot_requests: Vec::new(),
+            screenshot_layers: Vec::new(),
             held_by_other: HashMap::new(),
             texture_grant: TextureGrant { bytes: 0, count: 0 },
         }

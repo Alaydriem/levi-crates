@@ -1,6 +1,6 @@
 use amm_client::link::{FrameHandler, FrameInputView, FrameReply};
 use amm_core::structs::frame::{CursorShape, LayerKind};
-use egui::{Area, Context, Id, Rect, RichText, Sense, Ui, Window, pos2, vec2};
+use egui::{Area, Context, Id, Rect, RichText, Sense, TextEdit, Ui, Window, pos2, vec2};
 use studio_ui::theme::{Metrics, StudioPalette, Typeface};
 use studio_ui::widgets::{CardFrame, TextButton, Toggle};
 
@@ -18,6 +18,7 @@ impl DemoUi {
     const MARKS_PER_LINE: usize = 16;
     const BAR: (f32, f32) = (150.0, 6.0);
     const WINDOW_POS: (f32, f32) = (120.0, 120.0);
+    const NAME_WIDTH: f32 = 160.0;
 
     pub fn new(cell: DemoCell) -> Self {
         Self { cell }
@@ -50,6 +51,9 @@ impl DemoUi {
                     Self::bar(ui, config.card.opacity, state);
                 }
                 ui.label(RichText::new(state.camera_line()).color(StudioPalette::TEXT_DIM));
+                if !state.name().is_empty() {
+                    ui.label(RichText::new(format!("Name {}", state.name())).color(StudioPalette::TEXT_DIM));
+                }
                 if !state.screenshot_line().is_empty() {
                     ui.label(RichText::new(state.screenshot_line()).color(StudioPalette::TEXT_DIM));
                 }
@@ -103,6 +107,11 @@ impl DemoUi {
                 ui.horizontal(|ui| {
                     Toggle::show(ui, &mut show_last_event);
                     ui.label("Show the last event on the card");
+                });
+                ui.add_space(Metrics::GAP_S);
+                ui.horizontal(|ui| {
+                    ui.label("Name");
+                    ui.add(TextEdit::singleline(state.name_mut()).desired_width(Self::NAME_WIDTH));
                 });
                 ui.add_space(Metrics::GAP_S);
                 close = TextButton::secondary(ui, "Close").clicked();

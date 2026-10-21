@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::structs::capture::CaptureStage;
+use crate::structs::capture::{CaptureStage, ScreenshotLayers};
 use crate::structs::registry::ModIndex;
 
 /// One capture in flight. `owner` is `None` once the mod that asked for it has unregistered: the capture then
@@ -11,13 +11,14 @@ pub struct CaptureEntry {
     pub sequence: u32,
     pub owner: Option<ModIndex>,
     pub path: PathBuf,
+    pub layers: ScreenshotLayers,
     pub stage: CaptureStage,
     // manager ticks spent `Pending`
     pub pending_ticks: u32,
 }
 
 impl CaptureEntry {
-    pub fn new(sequence: u32, owner: ModIndex, path: PathBuf) -> Self {
-        Self { sequence, owner: Some(owner), path, stage: CaptureStage::Pending, pending_ticks: 0 }
+    pub fn new(sequence: u32, owner: ModIndex, path: PathBuf, layers: ScreenshotLayers) -> Self {
+        Self { sequence, owner: Some(owner), path, layers, stage: CaptureStage::Pending, pending_ticks: 0 }
     }
 }

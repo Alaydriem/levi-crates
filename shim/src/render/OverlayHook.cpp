@@ -366,58 +366,67 @@ bool acceptChain(IDXGISwapChain* chain) {
     return true;
 }
 
-void drawLayers(AmmHostFrame const& frame) {
+void drawLayers(AmmHostFrame const& frame, uint32_t first, uint32_t end) {
     float width  = 0.0f;
     float height = 0.0f;
     OverlayHook::backBufferSize(width, height);
-    LayerRenderer::draw(gContext.Get(), gDevice.Get(), frame, width, height);
+    LayerRenderer::draw(gContext.Get(), gDevice.Get(), frame, first, end, width, height);
 }
 
-// a frame with no layers draws nothing; its freed owners are dropped here, as the renderer does for a drawn frame
-void closeLayers(AmmHostFrame const& frame) {
-    LayerRenderer::managerClosed();
-    TextureRegistry::freeOwners(frame.freed_owners);
+void copyCaptures(ID3D11Resource* backBuffer, uint32_t const* sequences, uint32_t count) {
+    FrameCapture::copy(gDevice.Get(), gContext.Get(), backBuffer, sequences, count);
 }
 
-// the captures are copied from the acquired back buffer before the first layer is drawn on it
+// the game-only captures, and also the layer captures when the frame has no mod layer to draw before them
+void copyBeforeLayers(ID3D11Resource* backBuffer, AmmHostFrame const& frame, uint32_t modEnd) {
+    copyCaptures(backBuffer, frame.captures, frame.capture_count);
+    if (modEnd == 0) copyCaptures(backBuffer, frame.layer_captures, frame.layer_capture_count);
+}
+
+// draws the mod layers, copies the layer captures, then draws the manager layer. The target is unbound while the
+// back buffer is copied, so the copy does not read a bound output. With no layer capture to take between them,
+// all layers are drawn in one pass
+void drawLayerPass(ID3D11RenderTargetView* target, ID3D11Resource* backBuffer, AmmHostFrame const& frame, uint32_t modEnd) {
+    gContext->OMSetRenderTargets(1, &target, nullptr);
+    if (modEnd == 0 || frame.layer_capture_count == 0) {
+        drawLayers(frame, 0, frame.layer_count);
+        return;
+    }
+    drawLayers(frame, 0, modEnd);
+    gContext->OMSetRenderTargets(0, nullptr, nullptr);
+    copyCaptures(backBuffer, frame.layer_captures, frame.layer_capture_count);
+    gContext->OMSetRenderTargets(1, &target, nullptr);
+    drawLayers(frame, modEnd, frame.layer_count);
+}
+
+// the captures are copied from the acquired back buffer, around the mod layers drawn on it
 void drawWrapped(UINT index, AmmHostFrame const& frame) {
+    uint32_t        modEnd    = LayerRenderer::modLayerEnd(frame);
     ID3D11Resource* wrapped[] = {gWrapped[index].Get()};
     gDevice11On12->AcquireWrappedResources(wrapped, 1);
-    FrameCapture::copy(gDevice.Get(), gContext.Get(), wrapped[0], frame);
+    copyBeforeLayers(wrapped[0], frame, modEnd);
     if (frame.layer_count > 0) {
-        ID3D11RenderTargetView* target = gTargets[index].Get();
-        gContext->OMSetRenderTargets(1, &target, nullptr);
-        drawLayers(frame);
+        drawLayerPass(gTargets[index].Get(), wrapped[0], frame, modEnd);
         gContext->OMSetRenderTargets(0, nullptr, nullptr);
     }
     gDevice11On12->ReleaseWrappedResources(wrapped, 1);
     gContext->Flush();
-    if (frame.layer_count == 0) closeLayers(frame);
 }
 
-// CopyResource binds nothing, so the game's context state stays as it was
-void copyNative(AmmHostFrame const& frame) {
-    if (frame.capture_count == 0) return;
-    ComPtr<ID3D11Resource> backBuffer;
-    gTargets[0]->GetResource(&backBuffer);
-    FrameCapture::copy(gDevice.Get(), gContext.Get(), backBuffer.Get(), frame);
-}
-
-// the D3D11 context is the game's own: put its render targets and pipeline state back after drawing
+// the D3D11 context is the game's own: put its render targets and pipeline state back after drawing. CopyResource
+// binds nothing, so the copies made before the layers leave the game's state as it was
 void drawNative(AmmHostFrame const& frame) {
-    copyNative(frame);
-    if (frame.layer_count == 0) {
-        closeLayers(frame);
-        return;
-    }
+    uint32_t               modEnd = LayerRenderer::modLayerEnd(frame);
+    ComPtr<ID3D11Resource> backBuffer;
+    if (frame.capture_count > 0 || frame.layer_capture_count > 0) gTargets[0]->GetResource(&backBuffer);
+    copyBeforeLayers(backBuffer.Get(), frame, modEnd);
+    if (frame.layer_count == 0) return;
     std::array<ID3D11RenderTargetView*, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> saved{};
     ID3D11DepthStencilView*                                                     savedDepth = nullptr;
     gContext->OMGetRenderTargets(static_cast<UINT>(saved.size()), saved.data(), &savedDepth);
     {
-        D3D11StateBackup        state(gContext.Get());
-        ID3D11RenderTargetView* target = gTargets[0].Get();
-        gContext->OMSetRenderTargets(1, &target, nullptr);
-        drawLayers(frame);
+        D3D11StateBackup state(gContext.Get());
+        drawLayerPass(gTargets[0].Get(), backBuffer.Get(), frame, modEnd);
     }
     gContext->OMSetRenderTargets(static_cast<UINT>(saved.size()), saved.data(), savedDepth);
     for (ID3D11RenderTargetView* view : saved) {
@@ -499,8 +508,8 @@ void publishSafeState() {
 }
 
 // amm_host_frame runs only when the frame can be drawn, so no texture change Rust hands over is lost; its layers
-// are borrowed until the next amm_host_frame, so they are used only here. A frame with no layers and no capture
-// costs no D3D call
+// are borrowed until the next amm_host_frame, so they are used only here. A frame with no layers and no capture of
+// either set costs no D3D call
 void renderFrame(IDXGISwapChain* chain) {
     if (!acceptChain(chain)) return;
     if (OverlayHook::shuttingDown()) return;
@@ -527,10 +536,8 @@ void renderFrame(IDXGISwapChain* chain) {
         return;
     }
     publishFrameState(frame);
-    if (frame.layer_count == 0 && frame.capture_count == 0) {
-        closeLayers(frame);
-        return;
-    }
+    LayerRenderer::beginFrame(frame);
+    if (frame.layer_count == 0 && frame.capture_count == 0 && frame.layer_capture_count == 0) return;
     if (gDevice11On12) {
         drawWrapped(index, frame);
     } else {

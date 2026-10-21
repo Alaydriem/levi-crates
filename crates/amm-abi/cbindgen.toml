@@ -16,6 +16,7 @@ prefix_with_name = true
 include = [
   "AmmStatus",
   "AmmCapability",
+  "AmmScreenshotLayers",
   "AmmAcquireOutcome",
   "AmmAcquireResult",
   "AmmEventKind",

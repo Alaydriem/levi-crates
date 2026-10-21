@@ -122,6 +122,7 @@ fn table_size_equals_size_of_amm_api() {
     assert!(api.poll_events.is_some() && api.key_down.is_some() && api.set_setting.is_some());
     assert!(api.set_cursor_mode.is_some() && api.log.is_some());
     assert!(api.request_screenshot.is_some() && api.held_by_other.is_some() && api.texture_budget.is_some());
+    assert!(api.request_screenshot_layers.is_some());
 }
 
 #[test]

@@ -1,4 +1,11 @@
+pub mod clipboard_hold;
+pub mod clipboard_pass;
+pub mod clipboard_probe_handler;
 pub mod drop_flag_handler;
+pub mod focus_action;
+pub mod focus_probe_handler;
+pub mod focus_target;
+pub mod holding_handler;
 pub mod idle_handler;
 pub mod layer_probe_handler;
 pub mod layer_seen;
@@ -9,7 +16,14 @@ pub mod payload_panicking_handler;
 pub mod rect_handler;
 
 pub use amm_client::test_support::{FakeTable, LoggedCall};
+pub use clipboard_hold::ClipboardHold;
+pub use clipboard_pass::ClipboardPass;
+pub use clipboard_probe_handler::ClipboardProbeHandler;
 pub use drop_flag_handler::DropFlagHandler;
+pub use focus_action::FocusAction;
+pub use focus_probe_handler::FocusProbeHandler;
+pub use focus_target::FocusTarget;
+pub use holding_handler::HoldingHandler;
 pub use idle_handler::IdleHandler;
 pub use layer_probe_handler::LayerProbeHandler;
 pub use layer_seen::LayerSeen;

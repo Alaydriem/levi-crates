@@ -71,11 +71,17 @@ typedef struct AmmHostLayer {
  every texture of that owner. `cursor_free` releases the mouse grab and shows `cursor`; `hide_vanilla_hud`
  hides the game HUD.
 
- The first `capture_count` entries of `captures` are the sequences of the screenshots to take at this
- Present: the shim copies the back buffer into a staging texture for each, after the game has drawn and before
- it draws any layer. Each sequence is given once. When the copy can be read, the shim asks for a buffer with
- `amm_host_capture_buffer`, copies the rows into it and calls `amm_host_capture_done`; a capture it cannot
- copy it reports with `ok` 0. A capture not reported within 30 frames fails.
+ Two sets of screenshots are taken at this Present, at two capture points. The first `capture_count` entries of
+ `captures` are the game-only ones: the shim copies the back buffer into a staging texture for each after the
+ game has drawn and before it draws any layer. The first `layer_capture_count` entries of `layer_captures` are
+ the ones with mod layers: the shim draws `layers` up to the first layer whose owner is
+ `AmmHostLayer::MANAGER`, copies the back buffer for each, then draws the rest. The manager's layer (the panel
+ and the toasts) is always the last layer, so the copy shows the layers of all mods and not the manager's. With
+ no mod layer in the frame, the layer captures are copied at the same point as the game-only ones. Both sets
+ share the `AMM_HOST_MAX_CAPTURES` staging textures: together they hold at most that many sequences. Each
+ sequence is given once, in one set. When the copy can be read, the shim asks for a buffer with
+ `amm_host_capture_buffer`, copies the rows into it and calls `amm_host_capture_done`; a capture it cannot copy
+ it reports with `ok` 0. A capture not reported within 30 frames fails.
  */
 typedef struct AmmHostFrame {
   const struct AmmHostLayer *layers;
@@ -86,6 +92,8 @@ typedef struct AmmHostFrame {
   bool hide_vanilla_hud;
   uint32_t capture_count;
   uint32_t captures[AMM_HOST_MAX_CAPTURES];
+  uint32_t layer_capture_count;
+  uint32_t layer_captures[AMM_HOST_MAX_CAPTURES];
 } AmmHostFrame;
 
 /*

@@ -225,7 +225,7 @@ impl FrameCompositor {
             return None;
         }
         let mut flags = FrameInputData::ALLOW_POINTER | FrameInputData::ALLOW_KEYBOARD;
-        if rt.manager().arbiter().holds(index, Capability::Input) {
+        if rt.manager().arbiter().holds(index, Capability::Input) || rt.manager().keyboard_owner() == Some(index) {
             flags |= FrameInputData::ALLOW_NAV_KEYS;
         }
         let started = rt.manager().config().telemetry.then(Instant::now);

@@ -146,16 +146,16 @@ void pollOne(ID3D11DeviceContext* ctx, CaptureSlot& slot) {
 
 } // namespace
 
-void FrameCapture::copy(ID3D11Device* device, ID3D11DeviceContext* ctx, ID3D11Resource* backBuffer, AmmHostFrame const& frame) {
-    uint32_t count = std::min<uint32_t>(frame.capture_count, AMM_HOST_MAX_CAPTURES);
-    if (count == 0) return;
+void FrameCapture::copy(ID3D11Device* device, ID3D11DeviceContext* ctx, ID3D11Resource* backBuffer, uint32_t const* sequences, uint32_t count) {
+    count = std::min<uint32_t>(count, AMM_HOST_MAX_CAPTURES);
+    if (count == 0 || !sequences) return;
     ComPtr<ID3D11Texture2D> texture;
     bool usable = device && ctx && backBuffer && SUCCEEDED(backBuffer->QueryInterface(IID_PPV_ARGS(&texture)));
     for (uint32_t i = 0; i < count; ++i) {
         if (usable) {
-            copyOne(device, ctx, backBuffer, texture.Get(), frame.captures[i]);
+            copyOne(device, ctx, backBuffer, texture.Get(), sequences[i]);
         } else {
-            fail(frame.captures[i], "the back buffer is not a readable 2D texture", E_NOINTERFACE, DXGI_FORMAT_UNKNOWN);
+            fail(sequences[i], "the back buffer is not a readable 2D texture", E_NOINTERFACE, DXGI_FORMAT_UNKNOWN);
         }
     }
 }

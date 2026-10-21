@@ -54,6 +54,14 @@ keybind "screenshot" {
   config_path = "keys.screenshot"
 }
 
+keybind "screenshot_layers" {
+  label       = "Take screenshot with mod layers"
+  default     = "Alt+5"
+  capability  = "Hud"
+  scope       = "Global"
+  config_path = "keys.screenshot_layers"
+}
+
 section "card" {
   title = "Card"
 
@@ -138,6 +146,13 @@ section "keys" {
     label   = "Take screenshot"
     kind    = "chord"
     default = "Alt+4"
+    apply   = "Live"
+  }
+
+  field "keys.screenshot_layers" {
+    label   = "Take screenshot with mod layers"
+    kind    = "chord"
+    default = "Alt+5"
     apply   = "Live"
   }
 }

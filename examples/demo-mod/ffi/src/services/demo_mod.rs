@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use amm_client::link::{ApiTable, EventDrain, ManagerLink};
 use amm_core::errors::LinkError;
+use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::{KeybindPhase, ModEvent};
 use amm_core::structs::lease::AcquireOutcome;
@@ -25,6 +26,8 @@ pub struct DemoMod {
     shots_dir: PathBuf,
     // screenshots requested so far this session, the number in the next file name
     shot_count: u32,
+    // screenshots with mod layers requested so far this session, the number in the next file name
+    layer_shot_count: u32,
     // events of one poll, at most one drain buffer
     pending: Vec<ModEvent>,
 }
@@ -56,6 +59,7 @@ impl DemoMod {
             pending_shot: None,
             shots_dir: config_dir.join(Self::SHOTS_DIR),
             shot_count: 0,
+            layer_shot_count: 0,
             pending: Vec::with_capacity(EventDrain::CAPACITY),
         };
         demo.reload_config();
@@ -137,13 +141,14 @@ impl DemoMod {
             DemoAction::ToggleCard => self.toggle_card(),
             DemoAction::TakeCamera => self.toggle_camera(),
             DemoAction::OpenWindow => self.toggle_window(),
-            DemoAction::Screenshot => self.take_screenshot(),
+            DemoAction::Screenshot => self.take_screenshot(ScreenshotLayers::GameOnly),
+            DemoAction::ScreenshotWithLayers => self.take_screenshot(ScreenshotLayers::WithModLayers),
         }
     }
 
     // A capture needs an active Hud or Overlay lease. A shown card already holds Hud. With the card hidden, the
     // demo takes Hud for the request and gives it back when the file is written or the capture fails.
-    fn take_screenshot(&mut self) {
+    fn take_screenshot(&mut self, layers: ScreenshotLayers) {
         let shots = self.shots_dir.clone();
         if let Err(error) = std::fs::create_dir_all(&shots) {
             curia::warn!("shots folder not created", { error: error.to_string() });
@@ -153,12 +158,18 @@ impl DemoMod {
         if temporary_hud && !self.acquire_hud_for_shot() {
             return self.show_shot_line(Self::SHOT_FAILED.to_string());
         }
-        let number = self.shot_count + 1;
-        let name = format!("demo-{number}.png");
-        match self.link.request_screenshot(&shots.join(&name)) {
+        let number = match layers {
+            ScreenshotLayers::GameOnly => self.shot_count + 1,
+            ScreenshotLayers::WithModLayers => self.layer_shot_count + 1,
+        };
+        let name = PendingShot::file_name(layers, number);
+        match self.link.request_screenshot_with(&shots.join(&name), layers) {
             Ok(sequence) => {
-                self.shot_count = number;
-                self.pending_shot = Some(PendingShot { sequence, number, temporary_hud });
+                match layers {
+                    ScreenshotLayers::GameOnly => self.shot_count = number,
+                    ScreenshotLayers::WithModLayers => self.layer_shot_count = number,
+                }
+                self.pending_shot = Some(PendingShot { sequence, number, layers, temporary_hud });
                 self.show_shot_line(format!("Taking {name}"));
             }
             Err(error) => {
@@ -192,7 +203,11 @@ impl DemoMod {
         if shot.temporary_hud && !self.hud_held {
             self.link.release(Capability::Hud);
         }
-        let line = if ok { format!("Saved demo-{}.png", shot.number) } else { Self::SHOT_FAILED.to_string() };
+        let line = if ok {
+            format!("Saved {}", PendingShot::file_name(shot.layers, shot.number))
+        } else {
+            Self::SHOT_FAILED.to_string()
+        };
         self.show_shot_line(line);
     }
 

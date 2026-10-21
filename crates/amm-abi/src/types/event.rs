@@ -11,8 +11,9 @@ use super::AmmEventKind;
 /// - `PointerButton`: `code` is the button, `phase` is 1 when down, `x` and `y` are the position.
 /// - `PointerDelta`: `x` and `y` are the deltas.
 /// - `Wheel`: `x` is the line delta.
-/// - `ScreenshotTaken`: `code` is the capture sequence that `request_screenshot` returned, `phase` is 1 when the
-///   pixels were copied and 0 when the copy failed or was cancelled. A capture with `phase` 0 ends here.
+/// - `ScreenshotTaken`: `code` is the capture sequence that `request_screenshot` or `request_screenshot_layers`
+///   returned, `phase` is 1 when the pixels were copied and 0 when the copy failed or was cancelled. A capture with
+///   `phase` 0 ends here.
 /// - `ScreenshotWritten`: `code` is the capture sequence, `phase` is 1 when the PNG file is in place and 0 when
 ///   the encode or the write failed, which leaves no file.
 #[repr(C)]

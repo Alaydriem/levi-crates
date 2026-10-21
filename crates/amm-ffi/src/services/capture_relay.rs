@@ -2,11 +2,11 @@ use std::path::Path;
 
 use amm_core::errors::StoreError;
 use amm_core::services::manager::ManagerService;
-use amm_core::structs::capture::{CaptureImage, PixelFormat};
+use amm_core::structs::capture::{CaptureImage, PixelFormat, ScreenshotLayers};
 use amm_store::services::IoThread;
 
 use super::CaptureSlot;
-use crate::types::{AMM_HOST_CAPTURE_MAX_FRAMES, AMM_HOST_MAX_CAPTURES};
+use crate::types::{AMM_HOST_CAPTURE_MAX_FRAMES, AMM_HOST_MAX_CAPTURES, AmmHostFrame};
 
 /// The captures between the shim and the I/O thread. Each Present it offers the captures the manager has
 /// pending, ages the ones offered before, and hands each one the shim reported to the manager: a good copy goes
@@ -59,25 +59,32 @@ impl CaptureRelay {
         }
     }
 
-    /// Takes the captures the manager has pending for this Present, and returns their sequences and their count.
-    /// A capture with no free slot fails at once.
-    pub fn offer(&mut self, manager: &mut ManagerService) -> ([u32; AMM_HOST_MAX_CAPTURES], u32) {
-        let mut sequences = [0; AMM_HOST_MAX_CAPTURES];
-        let mut count = 0;
+    /// Takes the captures the manager has pending for this Present. Returns an empty frame that carries only
+    /// their sequences: the game-only ones in `captures`, the ones with mod layers in `layer_captures`. Both sets
+    /// share the slots. A capture with no free slot fails at once.
+    pub fn offer(&mut self, manager: &mut ManagerService) -> AmmHostFrame {
+        let mut frame = AmmHostFrame::empty();
+        let (mut game_count, mut layer_count) = (0, 0);
         for request in manager.take_captures().as_slice() {
+            let (set, count) = match request.layers {
+                ScreenshotLayers::GameOnly => (&mut frame.captures, &mut game_count),
+                ScreenshotLayers::WithModLayers => (&mut frame.layer_captures, &mut layer_count),
+            };
             let free = self.slots.iter_mut().find(|slot| slot.is_none());
-            match (free, sequences.get_mut(count)) {
+            match (free, set.get_mut(*count)) {
                 (Some(free), Some(out)) => {
                     *free = Some(CaptureSlot::new(request.sequence));
                     *out = request.sequence;
-                    count += 1;
+                    *count += 1;
                 }
                 _ => {
                     manager.capture_taken(request.sequence, false);
                 }
             }
         }
-        (sequences, u32::try_from(count).unwrap_or(0))
+        frame.capture_count = u32::try_from(game_count).unwrap_or(0);
+        frame.layer_capture_count = u32::try_from(layer_count).unwrap_or(0);
+        frame
     }
 
     /// The buffer the shim copies the pixels of `sequence` into, and its row pitch: `height` rows of

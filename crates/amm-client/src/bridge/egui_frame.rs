@@ -1,21 +1,39 @@
 use amm_abi::types::{AmmFrameInput, AmmFrameOutput, AmmStatus};
 use amm_core::structs::frame::{FrameInputData, LayerKind, UiEvent};
 
-use super::LayerContext;
+use super::{ClipboardBackend, ClipboardWorker, LayerContext};
 use crate::link::{FrameHandler, FrameInputView};
 
-/// A mod's egui runtime: the handler and one `LayerContext` per layer kind. A layer's context is made the first
-/// time the host calls the mod for that layer, so a mod has at most `LayerKind::COUNT` contexts.
+/// A mod's egui runtime: the handler, one `LayerContext` per layer kind and the mod's clipboard, which the
+/// layers share. A layer's context is made the first time the host calls the mod for that layer, so a mod has
+/// at most `LayerKind::COUNT` contexts.
 pub struct EguiFrame<H: FrameHandler> {
     handler: H,
     layers: [Option<LayerContext>; LayerKind::COUNT],
     running: Option<LayerKind>,
     panic_logged: bool,
+    clipboard: ClipboardWorker,
 }
 
 impl<H: FrameHandler> EguiFrame<H> {
+    /// A runtime that copies to and pastes from the Windows clipboard.
     pub fn new(handler: H) -> Self {
-        Self { handler, layers: [const { None }; LayerKind::COUNT], running: None, panic_logged: false }
+        Self::with_clipboard(handler, ClipboardBackend::Windows)
+    }
+
+    pub fn with_clipboard(handler: H, backend: ClipboardBackend) -> Self {
+        Self {
+            handler,
+            layers: [const { None }; LayerKind::COUNT],
+            running: None,
+            panic_logged: false,
+            clipboard: ClipboardWorker::new(backend),
+        }
+    }
+
+    /// The mod's clipboard, which its layers share.
+    pub fn clipboard(&self) -> &ClipboardWorker {
+        &self.clipboard
     }
 
     /// Runs one pass of the handler for the layer named by `input.allowed_layers` and fills `out`. `out.mesh`
@@ -31,7 +49,7 @@ impl<H: FrameHandler> EguiFrame<H> {
         let layer = LayerKind::from_bits(data.allowed_layers);
         self.running = Some(layer);
         let context = self.layers[layer.slot()].get_or_insert_with(|| LayerContext::new(layer));
-        context.run(&mut self.handler, &FrameInputView::new(data, layer), out);
+        context.run(&mut self.handler, &FrameInputView::new(data, layer), &self.clipboard, out);
         self.running = None;
         AmmStatus::Ok
     }
@@ -81,5 +99,13 @@ impl<H: FrameHandler> EguiFrame<H> {
             allowed_layers: input.allowed_layers,
             input_flags: input.input_flags,
         }
+    }
+}
+
+// The clipboard worker is told to stop first, so it winds down while the handler and the layers drop, and it
+// takes no request after the one it is in when the join at the end of the drop runs.
+impl<H: FrameHandler> Drop for EguiFrame<H> {
+    fn drop(&mut self) {
+        self.clipboard.stop();
     }
 }

@@ -10,7 +10,8 @@ use crate::structs::toast::ToastKind;
 /// and the keybind it pressed. A key-up and a repeat follow the down, so a release reaches the mod
 /// that got the press even after that mod lost its lease, and a key pressed while the panel was
 /// open never reaches a mod. A press on the manager's menu button goes to the manager's pass, and so does
-/// its release. `route` does not allocate.
+/// its release. While a mod has a focused text field, that mod gets every key press as a raw event and no
+/// keybind runs, except the manager toggle chord and the open panel. `route` does not allocate.
 pub struct InputRouter {
     slots: ModMask,
     pressed: [bool; InputEvent::VK_SLOTS],
@@ -140,8 +141,8 @@ impl InputRouter {
         }
     }
 
-    // Live keybinds first, then the Input holders, then the mod whose last frame asked for the
-    // keyboard (for keys) or the pointer (for buttons).
+    // The mod with a focused text field first (for keys), then live keybinds, then the Input holders, then
+    // the pointer owner (for buttons).
     fn dispatch(
         &mut self,
         slot: usize,
@@ -150,6 +151,12 @@ impl InputRouter {
         ctx: &RouteContext,
         matcher: &ChordMatcher,
     ) -> RouteDecision {
+        if chord.is_some()
+            && let Some(target) = ctx.keyboard_owner.map(|index| self.single(index)).filter(|mask| !mask.is_empty())
+        {
+            self.raw_down[slot] = target;
+            return RouteDecision { consume_from_game: true, raw_targets: target, ..RouteDecision::default() };
+        }
         if let Some(decision) = chord.and_then(|chord| self.keybind(slot, chord, ctx, matcher)) {
             return decision;
         }
@@ -161,7 +168,7 @@ impl InputRouter {
             });
             return RouteDecision { consume_from_game: !passes, raw_targets: holders, ..RouteDecision::default() };
         }
-        let owner = if chord.is_some() { ctx.keyboard_owner } else { ctx.pointer_owner };
+        let owner = ctx.pointer_owner.filter(|_| chord.is_none());
         match owner.map(|index| self.single(index)).filter(|mask| !mask.is_empty()) {
             Some(target) => {
                 self.raw_down[slot] = target;

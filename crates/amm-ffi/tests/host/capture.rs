@@ -36,6 +36,16 @@ fn request(handle: AmmHandle, path: &std::path::Path) -> u32 {
     sequence
 }
 
+fn request_layers(handle: AmmHandle, path: &std::path::Path, layers: u8) -> u32 {
+    let text = path.display().to_string();
+    let mut sequence = 0;
+    let call = TestHost::api().request_screenshot_layers.unwrap_or_else(|| panic!("request_screenshot_layers"));
+    // SAFETY: the path and the out sequence live for the call
+    let status = unsafe { call(handle, text.as_ptr(), text.len(), layers, &mut sequence) };
+    assert_eq!(status, AmmStatus::Ok);
+    sequence
+}
+
 fn capture_buffer(sequence: u32, width: u32, height: u32, out_row_pitch: *mut u32) -> *mut u8 {
     // SAFETY: out_row_pitch is null on purpose or a live u32 of the caller for the call
     unsafe { amm_host_capture_buffer(sequence, width, height, out_row_pitch) }
@@ -48,6 +58,10 @@ fn capturing() -> bool {
 
 fn captures(frame: &AmmHostFrame) -> Vec<u32> {
     frame.captures[..frame.capture_count as usize].to_vec()
+}
+
+fn layer_captures(frame: &AmmHostFrame) -> Vec<u32> {
+    frame.layer_captures[..frame.layer_capture_count as usize].to_vec()
 }
 
 // Copies `pixels` (rows of `width * 4` bytes) into the buffer the host gives for the capture.
@@ -308,4 +322,44 @@ fn a_capture_no_present_takes_fails_after_its_tick_limit() {
     assert_eq!(screenshot_events(&client), vec![(AmmEventKind::ScreenshotTaken, sequence, 0)]);
     assert!(captures(&host.frame(limit + 1)).is_empty());
     assert!(!capturing());
+}
+
+#[test]
+fn a_capture_with_layers_is_given_to_the_shim_in_the_layer_set() {
+    let host = TestHost::new();
+    let client = overlay_client(&host, "shooter");
+    let path = shot(&host, "layers.png");
+    let sequence = request_layers(client.handle(), &path, 1);
+
+    let frame = host.frame(0);
+    let (game, layered) = (captures(&frame), layer_captures(&frame));
+    assert!(fill(sequence, 1, 1, &[30, 20, 10, 255]));
+    assert_eq!(amm_host_capture_done(sequence, 1, BGRA), AmmStatus::Ok);
+    let again = layer_captures(&host.frame(1));
+    let events = wait_for_written(&client, 2);
+
+    assert!(game.is_empty());
+    assert_eq!(layered, vec![sequence]);
+    assert!(again.is_empty());
+    assert_eq!(
+        events,
+        vec![(AmmEventKind::ScreenshotTaken, sequence, 1), (AmmEventKind::ScreenshotWritten, sequence, 1)]
+    );
+    assert_eq!(&std::fs::read(&path).unwrap_or_default()[..4], b"\x89PNG");
+}
+
+#[test]
+fn a_game_only_capture_stays_in_the_game_set() {
+    let host = TestHost::new();
+    let game_only = overlay_client(&host, "game-only");
+    let by_value = overlay_client(&host, "by-value");
+    let layered = overlay_client(&host, "layered");
+    let first = request(game_only.handle(), &shot(&host, "a.png"));
+    let second = request_layers(by_value.handle(), &shot(&host, "b.png"), 0);
+    let third = request_layers(layered.handle(), &shot(&host, "c.png"), 1);
+
+    let frame = host.frame(0);
+
+    assert_eq!(captures(&frame), vec![first, second]);
+    assert_eq!(layer_captures(&frame), vec![third]);
 }

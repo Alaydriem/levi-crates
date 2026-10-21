@@ -1,8 +1,9 @@
 use std::ffi::c_void;
 use std::path::Path;
 
-use amm_abi::types::{AmmCallbacks, AmmCapability, AmmHandle, AmmStatus};
+use amm_abi::types::{AmmCallbacks, AmmCapability, AmmHandle, AmmScreenshotLayers, AmmStatus};
 use amm_core::errors::LinkError;
+use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::ModEvent;
 use amm_core::structs::lease::AcquireOutcome;
@@ -233,10 +234,10 @@ impl ManagerLink {
         Ok(())
     }
 
-    /// Asks for a screenshot of the next Present, written as a PNG to `path`, and returns its sequence, which the
-    /// `ScreenshotTaken` and `ScreenshotWritten` events carry. `path` is an absolute `.png` file path whose parent
-    /// folder exists; the mod must hold an active `Hud` or `Overlay` lease. A path that is not UTF-8 is
-    /// `InvalidArgument`; a manager older than ABI 1.2 is `Unsupported`.
+    /// Asks for a game-only screenshot of the next Present, taken before any mod layer, written as a PNG to `path`,
+    /// and returns its sequence, which the `ScreenshotTaken` and `ScreenshotWritten` events carry. `path` is an
+    /// absolute `.png` file path whose parent folder exists; the mod must hold an active `Hud` or `Overlay` lease.
+    /// A path that is not UTF-8 is `InvalidArgument`; a manager older than ABI 1.2 is `Unsupported`.
     pub fn request_screenshot(&self, path: &Path) -> Result<u32, LinkError> {
         let Some(request_screenshot) = self.table.api().request_screenshot else {
             return Err(LinkError::from(AmmStatus::Unsupported));
@@ -247,6 +248,28 @@ impl ManagerLink {
         let mut sequence = 0;
         // SAFETY: the path text and the out sequence live for the call; the handle is this link's until drop
         let status = unsafe { request_screenshot(self.handle, path.as_ptr(), path.len(), &mut sequence) };
+        match status {
+            AmmStatus::Ok => Ok(sequence),
+            other => Err(LinkError::from(other)),
+        }
+    }
+
+    /// `request_screenshot` with a choice of capture point. `GameOnly` is taken before any mod layer;
+    /// `WithModLayers` after the last mod layer and before the manager's panel and toasts, so the picture shows the
+    /// layers of all mods, as the player sees them. The rules and the events are those of `request_screenshot`. A
+    /// manager older than ABI 1.3 is `Unsupported` for both choices.
+    pub fn request_screenshot_with(&self, path: &Path, layers: ScreenshotLayers) -> Result<u32, LinkError> {
+        let Some(request_screenshot_layers) = self.table.api().request_screenshot_layers else {
+            return Err(LinkError::from(AmmStatus::Unsupported));
+        };
+        let Some(path) = path.to_str() else {
+            return Err(LinkError::from(AmmStatus::InvalidArgument));
+        };
+        let layers = AmmScreenshotLayers::from(layers) as u8;
+        let mut sequence = 0;
+        // SAFETY: the path text and the out sequence live for the call; the handle is this link's until drop
+        let status =
+            unsafe { request_screenshot_layers(self.handle, path.as_ptr(), path.len(), layers, &mut sequence) };
         match status {
             AmmStatus::Ok => Ok(sequence),
             other => Err(LinkError::from(other)),

@@ -1,4 +1,5 @@
 use amm_abi::types::{AmmAcquireOutcome, AmmCapability, AmmCursorShape, AmmEventKind, AmmUiEventKind};
+use amm_core::structs::frame::FrameInputData;
 use amm_ffi::host::{amm_host_char, amm_host_pointer};
 use amm_ffi::types::AmmHostPointerKind;
 
@@ -225,4 +226,27 @@ fn text_goes_only_to_the_layer_that_wants_the_keyboard() {
     assert!(typed.consume);
     assert!(hud.iter().any(|(kind, _)| *kind == AmmUiEventKind::Char));
     assert!(overlay.iter().all(|(kind, _)| *kind != AmmUiEventKind::Char), "the Overlay layer got text: {overlay:?}");
+}
+
+#[test]
+fn the_text_owner_gets_the_navigation_keys_without_an_input_lease() {
+    let host = TestHost::new();
+    let typist = two_layer_client(&host, "typist");
+    typist.reply_for_layer(0, (false, true, 0, [0.0; 4]));
+    host.frame(0);
+
+    host.frame(1);
+
+    assert_ne!(typist.input_flags() & FrameInputData::ALLOW_NAV_KEYS, 0);
+}
+
+#[test]
+fn a_mod_with_no_field_and_no_input_lease_gets_no_navigation_keys() {
+    let host = TestHost::new();
+    let quiet = two_layer_client(&host, "quiet");
+    host.frame(0);
+
+    host.frame(1);
+
+    assert_eq!(quiet.input_flags() & FrameInputData::ALLOW_NAV_KEYS, 0);
 }

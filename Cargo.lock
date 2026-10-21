@@ -67,6 +67,7 @@ dependencies = [
  "amm-client",
  "amm-core",
  "chrono",
+ "crossbeam-channel",
  "curia",
  "egui",
  "hcl-rs",

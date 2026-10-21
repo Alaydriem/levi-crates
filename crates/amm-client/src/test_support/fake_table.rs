@@ -48,6 +48,7 @@ impl FakeTable {
             request_screenshot: Some(Self::request_screenshot),
             held_by_other: Some(Self::held_by_other),
             texture_budget: Some(Self::texture_budget),
+            request_screenshot_layers: Some(Self::request_screenshot_layers),
         }
     }
 
@@ -304,6 +305,18 @@ impl FakeTable {
             unsafe { out_sequence.write(sequence) };
         }
         status
+    }
+
+    unsafe extern "C" fn request_screenshot_layers(
+        handle: AmmHandle,
+        path: *const u8,
+        path_len: usize,
+        layers: u8,
+        out_sequence: *mut u32,
+    ) -> AmmStatus {
+        Self::with(|state| state.screenshot_layers.push(layers));
+        // SAFETY: the client passes the path text and a writable out sequence for the call
+        unsafe { Self::request_screenshot(handle, path, path_len, out_sequence) }
     }
 
     unsafe extern "C" fn held_by_other(_: AmmHandle, capability: u8) -> u8 {

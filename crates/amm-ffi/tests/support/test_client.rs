@@ -28,6 +28,7 @@ pub struct ClientState {
     pub frames: AtomicU32,
     pub textures_lost: AtomicU32,
     pub allowed: AtomicU8,
+    pub input_flags: AtomicU8,
     pub events_seen: AtomicU32,
     /// When set, each frame calls `acquire` on this handle and keeps the outcome byte in `inner_outcome`.
     pub call_back_in: Mutex<Option<AmmHandle>>,
@@ -85,6 +86,7 @@ impl TestClient {
             frames: AtomicU32::new(0),
             textures_lost: AtomicU32::new(0),
             allowed: AtomicU8::new(0),
+            input_flags: AtomicU8::new(0),
             events_seen: AtomicU32::new(0),
             call_back_in: Mutex::new(None),
             inner_outcome: AtomicU8::new(u8::MAX),
@@ -138,6 +140,11 @@ impl TestClient {
 
     pub fn set_cursor_byte(&self, cursor: u8) {
         self.state.cursor.store(cursor, Ordering::SeqCst);
+    }
+
+    /// The `input_flags` of the last frame call.
+    pub fn input_flags(&self) -> u8 {
+        self.state.input_flags.load(Ordering::SeqCst)
     }
 
     /// The `allowed_layers` of each frame call so far.
@@ -257,6 +264,7 @@ impl TestClient {
         }
         state.frames.fetch_add(1, Ordering::SeqCst);
         state.allowed.store(input.allowed_layers, Ordering::SeqCst);
+        state.input_flags.store(input.input_flags, Ordering::SeqCst);
         state.events_seen.fetch_add(input.event_count as u32, Ordering::SeqCst);
         out.mesh = state.mesh.view();
         out.wants_pointer = 0;

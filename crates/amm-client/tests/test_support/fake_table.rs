@@ -3,6 +3,7 @@ use std::path::Path;
 use amm_abi::types::AmmStatus;
 use amm_client::test_support::{FakeTable, SettingCall};
 use amm_core::errors::LinkError;
+use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::{KeybindPhase, ModEvent};
 use amm_core::structs::lease::AcquireOutcome;
@@ -92,6 +93,23 @@ fn request_screenshot_records_the_path_and_answers_the_sequence_or_status_set() 
     assert_eq!(
         FakeTable::with(|state| state.screenshot_requests.clone()),
         vec!["C:\\shots\\a.png".to_owned(), "C:\\shots\\b.png".to_owned()]
+    );
+}
+
+#[test]
+fn request_screenshot_with_passes_the_layer_choice() {
+    let link = FakeTable::link_without_frame();
+    FakeTable::set_screenshot_answer(AmmStatus::Ok, 9);
+
+    let with_layers = link.request_screenshot_with(Path::new("C:\\shots\\a.png"), ScreenshotLayers::WithModLayers);
+    let game_only = link.request_screenshot_with(Path::new("C:\\shots\\b.png"), ScreenshotLayers::GameOnly);
+    let plain = link.request_screenshot(Path::new("C:\\shots\\c.png"));
+
+    assert_eq!((with_layers, game_only, plain), (Ok(9), Ok(9), Ok(9)));
+    assert_eq!(FakeTable::with(|state| state.screenshot_layers.clone()), vec![1, 0]);
+    assert_eq!(
+        FakeTable::with(|state| state.screenshot_requests.clone()),
+        vec!["C:\\shots\\a.png".to_owned(), "C:\\shots\\b.png".to_owned(), "C:\\shots\\c.png".to_owned()]
     );
 }
 

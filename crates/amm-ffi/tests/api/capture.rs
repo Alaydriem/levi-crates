@@ -201,3 +201,76 @@ fn texture_budget_refuses_null_out_pointers_and_a_stale_handle() {
     assert_eq!(stale_status, AmmStatus::UnknownHandle);
     assert_eq!((bytes, count), (0, 0));
 }
+
+fn request_layers(handle: AmmHandle, path: &[u8], layers: u8) -> (AmmStatus, u32) {
+    let mut sequence = 0;
+    let call = TestHost::api().request_screenshot_layers.unwrap_or_else(|| panic!("request_screenshot_layers"));
+    // SAFETY: the path and the out sequence live for the call
+    let status = unsafe { call(handle, path.as_ptr(), path.len(), layers, &mut sequence) };
+    (status, sequence)
+}
+
+#[test]
+fn a_layers_value_other_than_0_or_1_is_invalid_argument() {
+    let host = TestHost::new();
+    let client = overlay_client(&host, "shooter");
+    let path = shot(&host, "a.png");
+
+    let refused: Vec<AmmStatus> =
+        [2, 3, 0x80, 0xFF].map(|layers| request_layers(client.handle(), path.as_bytes(), layers).0).to_vec();
+    let with_layers = request_layers(client.handle(), path.as_bytes(), 1);
+
+    assert!(refused.iter().all(|status| *status == AmmStatus::InvalidArgument), "{refused:?}");
+    assert_eq!(with_layers.0, AmmStatus::Ok);
+    assert_ne!(with_layers.1, 0);
+}
+
+#[test]
+fn request_screenshot_layers_with_a_null_path_or_out_sequence_is_null_pointer() {
+    let host = TestHost::new();
+    let client = overlay_client(&host, "shooter");
+    let call = TestHost::api().request_screenshot_layers.unwrap_or_else(|| panic!("request_screenshot_layers"));
+    let path = shot(&host, "a.png");
+    let mut sequence = 0;
+
+    // SAFETY: the path pointer is null on purpose; the out sequence lives for the call
+    let null_path = unsafe { call(client.handle(), std::ptr::null(), 8, 1, &mut sequence) };
+    // SAFETY: the path pointer is null on purpose, with a bad layers value; the out sequence lives for the call
+    let null_path_bad_layers = unsafe { call(client.handle(), std::ptr::null(), 8, 9, &mut sequence) };
+    // SAFETY: the path lives for the call; the out sequence is null on purpose
+    let null_out = unsafe { call(client.handle(), path.as_ptr(), path.len(), 1, std::ptr::null_mut()) };
+
+    assert_eq!(null_path, AmmStatus::NullPointer);
+    assert_eq!(null_path_bad_layers, AmmStatus::NullPointer);
+    assert_eq!(null_out, AmmStatus::NullPointer);
+    assert_eq!(sequence, 0);
+}
+
+#[test]
+fn request_screenshot_layers_follows_the_path_lease_and_busy_rules_of_request_screenshot() {
+    let host = TestHost::new();
+    let client = overlay_client(&host, "shooter");
+    let unleased = TestClient::register(&host, &Descriptors::overlay("unleased"), TestMesh::triangle());
+    let long = format!("{}{}", shot(&host, ""), "a".repeat(5000) + ".png");
+    let missing = host.game_dir().join("no-such-folder").join("a.png").display().to_string();
+    let bad_utf8 = [0xC3u8, 0x28, b'.', b'p', b'n', b'g'];
+
+    let invalid = [
+        request_layers(client.handle(), long.as_bytes(), 1).0,
+        request_layers(client.handle(), b"shot.png", 1).0,
+        request_layers(client.handle(), shot(&host, "a.jpg").as_bytes(), 1).0,
+        request_layers(client.handle(), format!("{}{}", shot(&host, ""), "..\\a.png").as_bytes(), 1).0,
+        request_layers(client.handle(), missing.as_bytes(), 1).0,
+        request_layers(client.handle(), &bad_utf8, 1).0,
+    ];
+    let not_permitted = request_layers(unleased.handle(), shot(&host, "a.png").as_bytes(), 1).0;
+    let first = request_layers(client.handle(), shot(&host, "a.png").as_bytes(), 1).0;
+    let second_layers = request_layers(client.handle(), shot(&host, "b.png").as_bytes(), 1).0;
+    let second_game = request(client.handle(), &shot(&host, "b.png")).0;
+
+    assert!(invalid.iter().all(|status| *status == AmmStatus::InvalidArgument), "{invalid:?}");
+    assert_eq!(not_permitted, AmmStatus::NotPermitted);
+    assert_eq!(first, AmmStatus::Ok);
+    assert_eq!(second_layers, AmmStatus::Busy);
+    assert_eq!(second_game, AmmStatus::Busy);
+}

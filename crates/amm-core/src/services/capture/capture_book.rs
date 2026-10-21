@@ -4,14 +4,15 @@ use crate::errors::CaptureError;
 use crate::services::event::EventHub;
 use crate::services::lease::LeaseArbiter;
 use crate::services::path::PathRules;
-use crate::structs::capture::{CaptureEntry, CaptureRequest, CaptureStage, PendingCaptures};
+use crate::structs::capture::{CaptureEntry, CaptureRequest, CaptureStage, PendingCaptures, ScreenshotLayers};
 use crate::structs::descriptor::Capability;
 use crate::structs::event::ModEvent;
 use crate::structs::registry::ModIndex;
 
-/// The screenshot captures in flight, from the request to `ScreenshotWritten`. The table has
-/// `MAX_CAPTURES` slots, one per shim staging texture, so it cannot grow; a request past it, or a second
-/// request of a mod with a capture in flight, is `Busy`. Sequences start at 1 and never take the value 0.
+/// The screenshot captures in flight, from the request to `ScreenshotWritten`. The table has `MAX_CAPTURES`
+/// slots, one per shim staging texture, so it cannot grow; a request past it, or a second request of a mod with a
+/// capture in flight, is `Busy`. Game-only captures and captures with mod layers share the slots and the
+/// one-per-mod rule. Sequences start at 1 and never take the value 0.
 ///
 /// A capture is `Pending` until the shim takes it. A pending capture whose mod loses its active `Hud` and
 /// `Overlay` leases, or that the shim has not taken within `PENDING_TICKS` manager ticks, is cancelled with
@@ -33,10 +34,16 @@ impl CaptureBook {
         Self { entries: std::array::from_fn(|_| None), last_sequence: 0 }
     }
 
-    /// Books a capture for `index`, written to `path`, and returns its sequence. The mod must hold an active
-    /// `Hud` or `Overlay` lease (`NotPermitted`) and the path must pass `PathRules::screenshot_fault`
-    /// (`InvalidPath`). The caller checks that the mod is registered.
-    pub fn request(&mut self, arbiter: &LeaseArbiter, index: ModIndex, path: &Path) -> Result<u32, CaptureError> {
+    /// Books a capture for `index` at the capture point `layers`, written to `path`, and returns its sequence.
+    /// The mod must hold an active `Hud` or `Overlay` lease (`NotPermitted`) and the path must pass
+    /// `PathRules::screenshot_fault` (`InvalidPath`). The caller checks that the mod is registered.
+    pub fn request(
+        &mut self,
+        arbiter: &LeaseArbiter,
+        index: ModIndex,
+        path: &Path,
+        layers: ScreenshotLayers,
+    ) -> Result<u32, CaptureError> {
         if !Self::may_capture(arbiter, index) {
             return Err(CaptureError::NotPermitted);
         }
@@ -50,7 +57,7 @@ impl CaptureBook {
             return Err(CaptureError::Busy);
         };
         self.last_sequence = self.last_sequence.wrapping_add(1).max(1);
-        *free = Some(CaptureEntry::new(self.last_sequence, index, path.to_path_buf()));
+        *free = Some(CaptureEntry::new(self.last_sequence, index, path.to_path_buf(), layers));
         Ok(self.last_sequence)
     }
 
@@ -59,7 +66,7 @@ impl CaptureBook {
         let mut out = PendingCaptures::new();
         for entry in self.entries.iter().flatten().filter(|entry| entry.stage == CaptureStage::Pending) {
             if let Some(owner) = entry.owner {
-                out.push(CaptureRequest::new(entry.sequence, owner));
+                out.push(CaptureRequest::new(entry.sequence, owner, entry.layers));
             }
         }
         out

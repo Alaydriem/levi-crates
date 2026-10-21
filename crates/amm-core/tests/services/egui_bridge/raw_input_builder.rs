@@ -67,3 +67,26 @@ fn focus_loss_releases_held_buttons() {
     assert!(released);
     assert_eq!(raw.events.last(), Some(&Event::PointerGone));
 }
+
+#[test]
+fn ctrl_v_down_with_the_keyboard_allowed_records_a_paste_request() {
+    let mut builder = RawInputBuilder::new();
+    let mut raw = RawInput::default();
+    let events = [UiEvent { key: 0x56, modifiers: UiEvent::MOD_CTRL, down: true, ..event(UiEventKind::Key) }];
+
+    builder.build(&frame(&events, FrameInputData::ALLOW_KEYBOARD), &mut raw);
+
+    assert!(builder.take_paste_request());
+    assert!(!builder.take_paste_request());
+}
+
+#[test]
+fn ctrl_v_without_the_keyboard_records_none() {
+    let mut builder = RawInputBuilder::new();
+    let mut raw = RawInput::default();
+    let events = [UiEvent { key: 0x56, modifiers: UiEvent::MOD_CTRL, down: true, ..event(UiEventKind::Key) }];
+
+    builder.build(&frame(&events, FrameInputData::ALLOW_POINTER), &mut raw);
+
+    assert!(!builder.take_paste_request());
+}

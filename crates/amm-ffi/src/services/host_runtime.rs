@@ -11,6 +11,7 @@ use amm_core::services::descriptor::DescriptorChecker;
 use amm_core::services::manager::ManagerService;
 use amm_core::services::settings::{ChordText, ManagerConfigFile};
 use amm_core::services::{PanicGuard, PathRules};
+use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::ModEvent;
 use amm_core::structs::frame::{FrameInputData, LayerKind, UiEvent, UiEventKind};
@@ -215,10 +216,15 @@ impl HostRuntime {
         self.manager.acquire(index, cap, self.now_ms).map_err(|error| AmmStatus::from(&error))
     }
 
-    /// Books a screenshot of the next Present, written to `path`, and returns its sequence. A mod without an
-    /// active `Hud` or `Overlay` lease is `NotPermitted` before any path check. On top of the manager's path
-    /// rules the parent folder of `path` must exist, else `InvalidArgument`.
-    pub fn request_screenshot(&mut self, handle: AmmHandle, path: &Path) -> Result<u32, AmmStatus> {
+    /// Books a screenshot of the next Present at the capture point `layers`, written to `path`, and returns its
+    /// sequence. A mod without an active `Hud` or `Overlay` lease is `NotPermitted` before any path check. On top
+    /// of the manager's path rules the parent folder of `path` must exist, else `InvalidArgument`.
+    pub fn request_screenshot(
+        &mut self,
+        handle: AmmHandle,
+        path: &Path,
+        layers: ScreenshotLayers,
+    ) -> Result<u32, AmmStatus> {
         let index = self.index(handle)?;
         if !self.manager.may_capture(index) {
             return Err(AmmStatus::NotPermitted);
@@ -230,7 +236,7 @@ impl HostRuntime {
             });
             return Err(AmmStatus::InvalidArgument);
         }
-        self.manager.request_capture(index, path).map_err(|error| AmmStatus::from(&error))
+        self.manager.request_capture(index, path, layers).map_err(|error| AmmStatus::from(&error))
     }
 
     pub fn held_by_other(&self, handle: AmmHandle, cap: Capability) -> Result<bool, AmmStatus> {
@@ -318,16 +324,16 @@ impl HostRuntime {
         self.now_ms = input.now_ms.max(self.now_ms);
         CaptureRelay::collect_written(&mut self.manager, self.io.as_ref());
         self.captures.advance(&mut self.manager, self.io.as_ref());
-        let (captures, capture_count) = self.captures.offer(&mut self.manager);
+        let offered = self.captures.offer(&mut self.manager);
         let Some(mut compositor) = self.compositor.take() else {
-            return AmmHostFrame { captures, capture_count, ..AmmHostFrame::empty() };
+            return AmmHostFrame::empty().with_captures_of(&offered);
         };
         let composed = PanicGuard::run(
             || compositor.compose(self, input),
             |_| curia::error!("frame compose panicked, nothing drawn this frame"),
         );
         self.compositor = Some(compositor);
-        AmmHostFrame { captures, capture_count, ..composed.unwrap_or_else(AmmHostFrame::empty) }
+        composed.unwrap_or_else(AmmHostFrame::empty).with_captures_of(&offered)
     }
 
     /// Calls the frame callback of the mod in `index` for the layer `kind`, `allowed_layers` holding that layer's

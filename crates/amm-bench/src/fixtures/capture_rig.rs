@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 
 use amm_core::config::ManagerConfig;
 use amm_core::services::ManagerService;
+use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::registry::ModIndex;
 use amm_ffi::services::CaptureRelay;
@@ -51,10 +52,10 @@ impl CaptureRig {
     pub fn take_one(&mut self) -> Duration {
         let sequence = self
             .manager
-            .request_capture(self.index, &self.path)
+            .request_capture(self.index, &self.path, ScreenshotLayers::GameOnly)
             .unwrap_or_else(|error| panic!("request_capture: {error:?}"));
-        let (offered, count) = self.relay.offer(&mut self.manager);
-        assert_eq!((offered[0], count), (sequence, 1));
+        let offered = self.relay.offer(&mut self.manager);
+        assert_eq!((offered.captures[0], offered.capture_count), (sequence, 1));
         let row = Self::WIDTH as usize * Self::BYTES_PER_PIXEL;
 
         let start = Instant::now();

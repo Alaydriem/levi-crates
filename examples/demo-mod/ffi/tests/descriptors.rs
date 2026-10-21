@@ -29,11 +29,12 @@ fn demo_descriptor_passes_the_manager_checker() {
             ("take_camera", Capability::Camera),
             ("open_window", Capability::Overlay),
             ("screenshot", Capability::Hud),
+            ("screenshot_layers", Capability::Hud),
         ]
     );
     assert!(descriptor.keybinds.iter().all(|keybind| keybind.scope == KeyScope::Global));
     let chords: Vec<_> = descriptor.keybinds.iter().map(|keybind| keybind.default_chord).collect();
-    assert_eq!(chords, [alt(0x31), alt(0x32), alt(0x33), alt(0x34)]);
+    assert_eq!(chords, [alt(0x31), alt(0x32), alt(0x33), alt(0x34), alt(0x35)]);
 }
 
 fn alt(key: u32) -> Chord {

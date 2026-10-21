@@ -6,6 +6,7 @@ pub enum DemoAction {
     TakeCamera,
     OpenWindow,
     Screenshot,
+    ScreenshotWithLayers,
 }
 
 impl DemoAction {
@@ -16,6 +17,7 @@ impl DemoAction {
             1 => Some(DemoAction::TakeCamera),
             2 => Some(DemoAction::OpenWindow),
             3 => Some(DemoAction::Screenshot),
+            4 => Some(DemoAction::ScreenshotWithLayers),
             _ => None,
         }
     }
@@ -27,6 +29,7 @@ impl DemoAction {
             DemoAction::TakeCamera => "take_camera",
             DemoAction::OpenWindow => "open_window",
             DemoAction::Screenshot => "screenshot",
+            DemoAction::ScreenshotWithLayers => "screenshot_layers",
         }
     }
 }

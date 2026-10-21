@@ -9,6 +9,7 @@ use tempfile::TempDir;
 
 const TOGGLE_CARD_ACTION: u16 = 0;
 const SCREENSHOT_ACTION: u16 = 3;
+const SCREENSHOT_LAYERS_ACTION: u16 = 4;
 
 fn press_screenshot() {
     FakeTable::push_event(ModEvent::Keybind { action: SCREENSHOT_ACTION, phase: KeybindPhase::Pressed });
@@ -48,6 +49,37 @@ fn the_key_requests_a_numbered_png_in_the_shots_folder_and_creates_the_folder() 
             shots.join("demo-2.png").to_str().expect("utf-8").to_owned(),
         ]
     );
+}
+
+#[test]
+fn the_layers_key_requests_a_layers_png_with_its_own_numbering_and_the_layers_choice() {
+    let dir = TempDir::new().expect("temp dir");
+    let mut demo = demo(&dir);
+    FakeTable::set_screenshot_answer(AmmStatus::Ok, 7);
+
+    press_screenshot();
+    demo.tick();
+    FakeTable::push_event(ModEvent::ScreenshotWritten { sequence: 7, ok: true });
+    demo.tick();
+    FakeTable::set_screenshot_answer(AmmStatus::Ok, 8);
+    FakeTable::push_event(ModEvent::Keybind { action: SCREENSHOT_LAYERS_ACTION, phase: KeybindPhase::Pressed });
+    demo.tick();
+
+    let shots = dir.path().join("shots");
+    assert_eq!(
+        requested(),
+        vec![
+            shots.join("demo-1.png").to_str().expect("utf-8").to_owned(),
+            shots.join("demo-layers-1.png").to_str().expect("utf-8").to_owned(),
+        ]
+    );
+    assert_eq!(FakeTable::with(|state| state.screenshot_layers.clone()), vec![0, 1]);
+    assert_eq!(demo.screenshot_line(), "Taking demo-layers-1.png");
+
+    FakeTable::push_event(ModEvent::ScreenshotWritten { sequence: 8, ok: true });
+    demo.tick();
+
+    assert_eq!(demo.screenshot_line(), "Saved demo-layers-1.png");
 }
 
 #[test]

@@ -260,10 +260,10 @@ void noteManagerDrawn(AmmHostFrame const& frame) {
     LayerRenderer::managerClosed();
 }
 
-void countGeometry(AmmHostFrame const& frame, size_t& vertices, size_t& indices) {
+void countGeometry(AmmHostFrame const& frame, uint32_t first, uint32_t end, size_t& vertices, size_t& indices) {
     vertices = 0;
     indices  = 0;
-    for (uint32_t i = 0; i < frame.layer_count; ++i) {
+    for (uint32_t i = first; i < end; ++i) {
         AmmMeshView const& mesh = frame.layers[i].mesh;
         if (!meshUsable(mesh)) continue;
         vertices += mesh.vertex_count;
@@ -271,8 +271,9 @@ void countGeometry(AmmHostFrame const& frame, size_t& vertices, size_t& indices)
     }
 }
 
-// every layer's vertices and indices go into one shared pair of buffers, one after the other in layer order
-bool uploadGeometry(ID3D11DeviceContext* ctx, AmmHostFrame const& frame) {
+// the vertices and indices of each layer in the range go into one shared pair of buffers, one after the other in
+// layer order
+bool uploadGeometry(ID3D11DeviceContext* ctx, AmmHostFrame const& frame, uint32_t first, uint32_t end) {
     D3D11_MAPPED_SUBRESOURCE vertexMap{};
     D3D11_MAPPED_SUBRESOURCE indexMap{};
     if (FAILED(ctx->Map(gVertices.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &vertexMap))) return false;
@@ -282,7 +283,7 @@ bool uploadGeometry(ID3D11DeviceContext* ctx, AmmHostFrame const& frame) {
     }
     auto* vertexOut = static_cast<uint8_t*>(vertexMap.pData);
     auto* indexOut  = static_cast<uint8_t*>(indexMap.pData);
-    for (uint32_t i = 0; i < frame.layer_count; ++i) {
+    for (uint32_t i = first; i < end; ++i) {
         AmmMeshView const& mesh = frame.layers[i].mesh;
         if (!meshUsable(mesh)) continue;
         size_t vertexBytes = mesh.vertex_count * VERTEX_STRIDE;
@@ -392,10 +393,10 @@ void drawLayer(ID3D11DeviceContext* ctx, AmmHostLayer const& layer, UINT indexBa
     }
 }
 
-void drawLayers(ID3D11DeviceContext* ctx, AmmHostFrame const& frame, float width, float height) {
+void drawLayers(ID3D11DeviceContext* ctx, AmmHostFrame const& frame, uint32_t first, uint32_t end, float width, float height) {
     UINT indexBase  = 0;
     INT  vertexBase = 0;
-    for (uint32_t i = 0; i < frame.layer_count; ++i) {
+    for (uint32_t i = first; i < end; ++i) {
         AmmHostLayer const& layer = frame.layers[i];
         if (!meshUsable(layer.mesh)) continue;
         drawLayer(ctx, layer, indexBase, vertexBase, width, height);
@@ -407,11 +408,11 @@ void drawLayers(ID3D11DeviceContext* ctx, AmmHostFrame const& frame, float width
     ctx->PSSetShaderResources(0, 1, &none);
 }
 
-void drawGeometry(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame, float width, float height) {
+void drawGeometry(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame, uint32_t first, uint32_t end, float width, float height) {
     if (width <= 0.0f || height <= 0.0f) return;
     size_t vertices = 0;
     size_t indices  = 0;
-    countGeometry(frame, vertices, indices);
+    countGeometry(frame, first, end, vertices, indices);
     if (vertices == 0 || indices == 0) return;
     if (!ensureBuffer(device, gVertices, gVertexCapacity, vertices, VERTEX_STRIDE, D3D11_BIND_VERTEX_BUFFER, INITIAL_VERTICES)
         || !ensureBuffer(device, gIndices, gIndexCapacity, indices, INDEX_STRIDE, D3D11_BIND_INDEX_BUFFER, INITIAL_INDICES)) {
@@ -424,19 +425,20 @@ void drawGeometry(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame c
         gOversizeLogged = true;
         return;
     }
-    if (!uploadGeometry(ctx, frame) || !uploadConstants(ctx, width, height)) return;
+    if (!uploadGeometry(ctx, frame, first, end) || !uploadConstants(ctx, width, height)) return;
     bindPipeline(ctx, width, height);
-    drawLayers(ctx, frame, width, height);
+    drawLayers(ctx, frame, first, end, width, height);
 }
 
-void applyTextures(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame) {
-    TextureRegistry::freeOwners(frame.freed_owners);
-    for (uint32_t i = 0; i < frame.layer_count; ++i) TextureRegistry::apply(ctx, device, frame.layers[i].owner, frame.layers[i].mesh);
+void applyTextures(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame, uint32_t first, uint32_t end) {
+    for (uint32_t i = first; i < end; ++i) TextureRegistry::apply(ctx, device, frame.layers[i].owner, frame.layers[i].mesh);
 }
 
-void freeTextures(AmmHostFrame const& frame) {
-    for (uint32_t i = 0; i < frame.layer_count; ++i) TextureRegistry::freeListed(frame.layers[i].owner, frame.layers[i].mesh);
+void freeTextures(AmmHostFrame const& frame, uint32_t first, uint32_t end) {
+    for (uint32_t i = first; i < end; ++i) TextureRegistry::freeListed(frame.layers[i].owner, frame.layers[i].mesh);
 }
+
+bool layersReadable(AmmHostFrame const& frame) { return frame.layer_count == 0 || frame.layers; }
 
 } // namespace
 
@@ -452,13 +454,28 @@ bool LayerRenderer::init(ID3D11Device* device) {
 
 bool LayerRenderer::ready() { return gReady; }
 
-void LayerRenderer::draw(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame, float width, float height) {
-    if (!gReady || !ctx || !device) return;
-    if (frame.layer_count != 0 && !frame.layers) return;
+void LayerRenderer::beginFrame(AmmHostFrame const& frame) {
+    if (!layersReadable(frame)) return;
     noteManagerDrawn(frame);
-    applyTextures(ctx, device, frame);
-    drawGeometry(ctx, device, frame, width, height);
-    freeTextures(frame);
+    TextureRegistry::freeOwners(frame.freed_owners);
+}
+
+uint32_t LayerRenderer::modLayerEnd(AmmHostFrame const& frame) {
+    if (!layersReadable(frame)) return 0;
+    for (uint32_t i = 0; i < frame.layer_count; ++i) {
+        if (frame.layers[i].owner == AmmHostLayer_MANAGER) return i;
+    }
+    return frame.layer_count;
+}
+
+void LayerRenderer::draw(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame, uint32_t first, uint32_t end, float width, float height) {
+    if (!gReady || !ctx || !device) return;
+    if (!layersReadable(frame)) return;
+    end = std::min(end, frame.layer_count);
+    if (first >= end) return;
+    applyTextures(ctx, device, frame, first, end);
+    drawGeometry(ctx, device, frame, first, end, width, height);
+    freeTextures(frame, first, end);
 }
 
 void LayerRenderer::managerClosed() {

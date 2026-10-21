@@ -11,6 +11,7 @@ pub struct RawInputBuilder {
     modifiers: Modifiers,
     held: [bool; 3],
     pointer: Pos2,
+    paste_requested: bool,
 }
 
 impl RawInputBuilder {
@@ -19,7 +20,7 @@ impl RawInputBuilder {
     const VK_ALT: [u32; 3] = [0x12, 0xA4, 0xA5];
 
     pub fn new() -> Self {
-        Self { modifiers: Modifiers::NONE, held: [false; 3], pointer: Pos2::ZERO }
+        Self { modifiers: Modifiers::NONE, held: [false; 3], pointer: Pos2::ZERO, paste_requested: false }
     }
 
     /// Fills `out` for this frame. The event vector of `out` is reused.
@@ -36,6 +37,12 @@ impl RawInputBuilder {
         for event in input.events {
             self.event(event, ppp, input.input_flags, &mut out.events);
         }
+    }
+
+    /// True once after a frame delivered a Ctrl+V key down, which the keyboard must be allowed to reach. egui has
+    /// no clipboard of its own, so the caller reads the clipboard and gives the text back as `Event::Paste`.
+    pub fn take_paste_request(&mut self) -> bool {
+        std::mem::replace(&mut self.paste_requested, false)
     }
 
     fn event(&mut self, event: &UiEvent, ppp: f32, allowed: u8, out: &mut Vec<Event>) {
@@ -85,6 +92,7 @@ impl RawInputBuilder {
             if allowed & FrameInputData::ALLOW_NAV_KEYS != 0 { KeyMap::to_egui(vk) } else { KeyMap::to_egui_safe(vk) };
         let Some(key) = mapped else { return };
         let ctrl_down = self.modifiers.ctrl && event.down;
+        self.paste_requested |= key == egui::Key::V && ctrl_down;
         match key {
             egui::Key::C if ctrl_down => out.push(Event::Copy),
             egui::Key::X if ctrl_down => out.push(Event::Cut),

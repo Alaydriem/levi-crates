@@ -13,5 +13,5 @@ fn action_indexes_follow_the_descriptor_keybind_order() {
 
 #[test]
 fn an_index_past_the_keybinds_is_no_action() {
-    assert_eq!(DemoAction::from_index(4), None);
+    assert_eq!(DemoAction::from_index(5), None);
 }

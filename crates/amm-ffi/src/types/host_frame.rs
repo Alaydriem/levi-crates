@@ -17,11 +17,17 @@ pub const AMM_HOST_CAPTURE_MAX_FRAMES: u32 = 30;
 /// every texture of that owner. `cursor_free` releases the mouse grab and shows `cursor`; `hide_vanilla_hud`
 /// hides the game HUD.
 ///
-/// The first `capture_count` entries of `captures` are the sequences of the screenshots to take at this
-/// Present: the shim copies the back buffer into a staging texture for each, after the game has drawn and before
-/// it draws any layer. Each sequence is given once. When the copy can be read, the shim asks for a buffer with
-/// `amm_host_capture_buffer`, copies the rows into it and calls `amm_host_capture_done`; a capture it cannot
-/// copy it reports with `ok` 0. A capture not reported within 30 frames fails.
+/// Two sets of screenshots are taken at this Present, at two capture points. The first `capture_count` entries of
+/// `captures` are the game-only ones: the shim copies the back buffer into a staging texture for each after the
+/// game has drawn and before it draws any layer. The first `layer_capture_count` entries of `layer_captures` are
+/// the ones with mod layers: the shim draws `layers` up to the first layer whose owner is
+/// `AmmHostLayer::MANAGER`, copies the back buffer for each, then draws the rest. The manager's layer (the panel
+/// and the toasts) is always the last layer, so the copy shows the layers of all mods and not the manager's. With
+/// no mod layer in the frame, the layer captures are copied at the same point as the game-only ones. Both sets
+/// share the `AMM_HOST_MAX_CAPTURES` staging textures: together they hold at most that many sequences. Each
+/// sequence is given once, in one set. When the copy can be read, the shim asks for a buffer with
+/// `amm_host_capture_buffer`, copies the rows into it and calls `amm_host_capture_done`; a capture it cannot copy
+/// it reports with `ok` 0. A capture not reported within 30 frames fails.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct AmmHostFrame {
@@ -33,6 +39,8 @@ pub struct AmmHostFrame {
     pub hide_vanilla_hud: bool,
     pub capture_count: u32,
     pub captures: [u32; AMM_HOST_MAX_CAPTURES],
+    pub layer_capture_count: u32,
+    pub layer_captures: [u32; AMM_HOST_MAX_CAPTURES],
 }
 
 impl AmmHostFrame {
@@ -47,6 +55,19 @@ impl AmmHostFrame {
             hide_vanilla_hud: false,
             capture_count: 0,
             captures: [0; AMM_HOST_MAX_CAPTURES],
+            layer_capture_count: 0,
+            layer_captures: [0; AMM_HOST_MAX_CAPTURES],
+        }
+    }
+
+    /// This frame with the two capture sets of `offered` in place of its own.
+    pub fn with_captures_of(self, offered: &AmmHostFrame) -> Self {
+        Self {
+            capture_count: offered.capture_count,
+            captures: offered.captures,
+            layer_capture_count: offered.layer_capture_count,
+            layer_captures: offered.layer_captures,
+            ..self
         }
     }
 }

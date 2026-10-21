@@ -15,7 +15,7 @@
 /*
  The ABI minor version. It grows when functions are added at the end of the table.
  */
-#define AMM_ABI_MINOR 2
+#define AMM_ABI_MINOR 3
 
 /*
  The result code of a table function.
@@ -38,8 +38,8 @@ enum AmmStatus
   AMM_STATUS_UNSUPPORTED,
   AMM_STATUS_MANAGER_MISSING,
   /*
-   The request cannot be taken now: try again later. `request_screenshot` returns it while a capture of the
-   mod is in flight, or while every capture slot of the manager is in use.
+   The request cannot be taken now: try again later. `request_screenshot` and `request_screenshot_layers`
+   return it while a capture of the mod is in flight, or while every capture slot of the manager is in use.
    */
   AMM_STATUS_BUSY,
 };
@@ -63,6 +63,27 @@ enum AmmCapability
 };
 #ifndef __cplusplus
 typedef uint8_t AmmCapability;
+#endif // __cplusplus
+
+/*
+ What a screenshot shows, as the `layers` byte of `request_screenshot_layers`.
+ */
+enum AmmScreenshotLayers
+#ifdef __cplusplus
+  : uint8_t
+#endif // __cplusplus
+ {
+  /*
+   Taken after the game has drawn and before any mod layer, toast or the panel.
+   */
+  AMM_SCREENSHOT_LAYERS_GAME_ONLY = 0,
+  /*
+   Taken after the last mod layer and before the manager's panel and toasts: the layers of all mods show.
+   */
+  AMM_SCREENSHOT_LAYERS_WITH_MOD_LAYERS = 1,
+};
+#ifndef __cplusplus
+typedef uint8_t AmmScreenshotLayers;
 #endif // __cplusplus
 
 /*
@@ -215,8 +236,9 @@ typedef struct AmmAcquireResult {
  - `PointerButton`: `code` is the button, `phase` is 1 when down, `x` and `y` are the position.
  - `PointerDelta`: `x` and `y` are the deltas.
  - `Wheel`: `x` is the line delta.
- - `ScreenshotTaken`: `code` is the capture sequence that `request_screenshot` returned, `phase` is 1 when the
-   pixels were copied and 0 when the copy failed or was cancelled. A capture with `phase` 0 ends here.
+ - `ScreenshotTaken`: `code` is the capture sequence that `request_screenshot` or `request_screenshot_layers`
+   returned, `phase` is 1 when the pixels were copied and 0 when the copy failed or was cancelled. A capture with
+   `phase` 0 ends here.
  - `ScreenshotWritten`: `code` is the capture sequence, `phase` is 1 when the PNG file is in place and 0 when
    the encode or the write failed, which leaves no file.
  */
@@ -324,7 +346,8 @@ typedef struct AmmFrameInput {
 
 /*
  What a mod frame callback fills in. `layer_rect` is `[min_x, min_y, max_x, max_y]` in physical pixels.
- `wants_pointer` and `wants_keyboard` are 0 or 1. `cursor` is an `AmmCursorShape` value.
+ `wants_pointer` and `wants_keyboard` are 0 or 1. `wants_keyboard` is 1 only while a text field of the
+ layer has keyboard focus, not for a focused button. `cursor` is an `AmmCursorShape` value.
  `FrameReplyData::try_from(&AmmFrameOutput)` rejects any other value
  with `AmmStatus::InvalidArgument`.
  */
@@ -457,8 +480,8 @@ typedef struct AmmApi {
               uintptr_t file_len,
               uint32_t line);
   /*
-   Game thread. Since 1.2. Asks for a screenshot of the next Present, taken after the game has drawn and
-   before any mod layer, toast or the panel, written as an opaque 8-bit RGB PNG to `path`. `path` is an
+   Game thread. Since 1.2. Asks for a game-only screenshot of the next Present, taken after the game has drawn
+   and before any mod layer, toast or the panel, written as an opaque 8-bit RGB PNG to `path`. `path` is an
    absolute UTF-8 file path ending in `.png` (any case) with no `..` part, not a network, device or verbatim
    path, whose parent folder exists; any other path is `InvalidArgument`. The file is written atomically and
    replaces an existing file. The mod must hold an active `Hud` or `Overlay` lease, else `NotPermitted`. One
@@ -466,7 +489,8 @@ typedef struct AmmApi {
    manager has a fixed number of capture slots: past either, `Busy`. On `Ok`, `out_sequence` gets the capture
    sequence, never 0, that the `ScreenshotTaken` and `ScreenshotWritten` events carry in `code`. A null
    `path` or `out_sequence` is `NullPointer`, checked before the path; a path longer than 4096 bytes is
-   `InvalidArgument`. `path` is valid only for the call.
+   `InvalidArgument`. `path` is valid only for the call. `request_screenshot_layers` with `layers` 0 does the
+   same.
    */
   AmmStatus (*request_screenshot)(struct AmmHandle handle,
                                   const uint8_t *path,
@@ -484,6 +508,21 @@ typedef struct AmmApi {
    `NullPointer`, and nothing is written.
    */
   AmmStatus (*texture_budget)(struct AmmHandle handle, uint64_t *out_bytes, uint32_t *out_count);
+  /*
+   Game thread. Since 1.3. `request_screenshot` with a choice of capture point. `layers` is an
+   `AmmScreenshotLayers` value: 0 (`GameOnly`) is taken after the game has drawn and before any mod layer, as
+   `request_screenshot` is; 1 (`WithModLayers`) is taken after the last mod layer and before the manager's
+   panel and toasts, so the picture shows the layers of all mods, as the player sees them, not only the
+   caller's. Any other value is `InvalidArgument`, checked after the null pointers. The path, the lease (an
+   active `Hud` or `Overlay` lease of the caller, for either value), one capture of a mod in flight at a time,
+   the manager's capture slots, which both values share, the statuses and the `ScreenshotTaken` and
+   `ScreenshotWritten` events are as for `request_screenshot`. `path` is valid only for the call.
+   */
+  AmmStatus (*request_screenshot_layers)(struct AmmHandle handle,
+                                         const uint8_t *path,
+                                         uintptr_t path_len,
+                                         uint8_t layers,
+                                         uint32_t *out_sequence);
 } AmmApi;
 
 #endif  /* ALAYDRIEM_MOD_MANAGER_H */

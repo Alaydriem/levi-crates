@@ -1,15 +1,19 @@
 use std::collections::HashSet;
+use std::sync::{Arc, Mutex};
 
 use amm_abi::types::{
     AmmCursorShape, AmmDrawCmd, AmmFrameInput, AmmStatus, AmmTextureDelta, AmmUiEvent, AmmUiEventKind, AmmVertex,
 };
-use amm_client::bridge::{EguiFrame, FrameTrampoline};
+use amm_client::bridge::{ClipboardBackend, EguiFrame, FrameTrampoline};
 use amm_client::link::FrameHandler;
 use amm_core::structs::frame::{FrameInputData, LayerKind};
 use amm_core::structs::mesh::DrawCmd;
 use egui::{Rect, pos2, vec2};
 
-use crate::support::{FakeTable, LayerProbeHandler, LayerSeen, OverlayPanickingHandler, RectHandler};
+use crate::support::{
+    ClipboardHold, ClipboardPass, ClipboardProbeHandler, FakeTable, HoldingHandler, LayerProbeHandler, LayerSeen,
+    OverlayPanickingHandler, RectHandler,
+};
 
 fn layer_input(layer: u8, events: &[AmmUiEvent]) -> AmmFrameInput {
     AmmFrameInput {
@@ -175,4 +179,27 @@ fn a_panic_in_one_layer_resets_only_that_layer() {
     assert_eq!((hud_status, overlay_status), (AmmStatus::Ok as i32, AmmStatus::Ok as i32));
     assert_eq!(hud_full, 0, "the hud layer keeps its font atlas");
     assert!(overlay_full > 0, "the overlay layer sends its font atlas again");
+}
+
+#[test]
+fn dropping_the_frame_joins_the_worker() {
+    let memory = Arc::new(Mutex::new(String::new()));
+    let (probe, action, text) = ClipboardProbeHandler::new("first");
+    let handler = HoldingHandler::new(probe, ClipboardHold::new(&memory));
+    let mut frame = EguiFrame::with_clipboard(handler, ClipboardBackend::Blocking(Arc::clone(&memory)));
+    ClipboardPass::focus(&mut frame, &action);
+    ClipboardPass::select_all(&mut frame);
+    ClipboardPass::ctrl_c(&mut frame);
+    // the worker took the first copy and waits inside it for the lock the handler holds
+    assert!(ClipboardPass::wait_for_empty_queue(frame.clipboard()));
+    text.replace("second".to_owned());
+    ClipboardPass::run(&mut frame, &[]);
+    ClipboardPass::select_all(&mut frame);
+    ClipboardPass::ctrl_c(&mut frame);
+    assert_eq!(frame.clipboard().pending(), 1, "the second copy waits in the queue");
+
+    drop(frame);
+
+    // the first copy ended when the handler let go of the lock; the waiting one never ran
+    assert_eq!(memory.lock().map(|text| text.clone()).unwrap_or_default(), "first");
 }

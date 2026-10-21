@@ -7,9 +7,9 @@ struct ID3D11DeviceContext;
 
 namespace amm_shim {
 
-// draws the layers of one AmmHostFrame with D3D11, bottom to top, in one pass. Render thread only. Works on the
-// game's own D3D11 device and on the D3D11On12 device of the D3D12 path; the caller binds the render target and
-// keeps the context state it needs. Each draw command picks its pixel shader by `shader` and its sampler by
+// draws the layers of one AmmHostFrame with D3D11, bottom to top, in one or more ranges. Render thread only. Works
+// on the game's own D3D11 device and on the D3D11On12 device of the D3D12 path; the caller binds the render target
+// and keeps the context state it needs. Each draw command picks its pixel shader by `shader` and its sampler by
 // `sampler`; a command with an unknown shader or sampler is skipped and logged once
 class LayerRenderer {
 public:
@@ -20,9 +20,19 @@ public:
     // true between a successful init() and release()
     static bool ready();
 
-    // drops the freed owners, applies every layer's texture deltas, draws every layer into the bound target of
-    // `width` x `height` pixels, then frees the textures each layer lists
-    static void draw(ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame, float width, float height);
+    // the once-per-frame part of drawing `frame`: the manager layer's open and close logs and the freed owners.
+    // Call it once for each frame, before any draw() of that frame, also for a frame with no layers
+    static void beginFrame(AmmHostFrame const& frame);
+
+    // the index of the first manager layer of `frame`, or `layer_count` when it has none. The layers before it
+    // are the mod layers
+    static uint32_t modLayerEnd(AmmHostFrame const& frame);
+
+    // applies the texture deltas of layers [first, end), draws them into the bound target of `width` x `height`
+    // pixels, then frees the textures each of them lists. Called for one or more ranges of a frame, in layer order
+    static void draw(
+        ID3D11DeviceContext* ctx, ID3D11Device* device, AmmHostFrame const& frame, uint32_t first, uint32_t end, float width, float height
+    );
 
     // re-arms the once-per-open logs of the manager layer; called for a frame that has no manager layer
     static void managerClosed();

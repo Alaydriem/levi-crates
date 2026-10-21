@@ -27,6 +27,8 @@ const KEY_G: u32 = 0x47;
 const KEY_M: u32 = 0x4D;
 const KEY_P: u32 = 0x50;
 const KEY_W: u32 = 0x57;
+const KEY_Z: u32 = 0x5A;
+const VK_DELETE: u32 = 0x2E;
 
 struct Rig {
     registry: ModRegistry,
@@ -36,6 +38,7 @@ struct Rig {
     matcher: ChordMatcher,
     router: InputRouter,
     panel_open: bool,
+    keyboard_owner: Option<ModIndex>,
 }
 
 impl Rig {
@@ -62,6 +65,7 @@ impl Rig {
             matcher,
             router: InputRouter::new(16),
             panel_open: false,
+            keyboard_owner: None,
         };
         (rig, ids)
     }
@@ -77,12 +81,19 @@ impl Rig {
         position.unwrap_or_else(|| panic!("no keybind {name}")) as u16
     }
 
+    // Replaces the matcher with exactly these binds, so a test can bind any key to any declared action.
+    fn rebind(&mut self, binds: &[(ModIndex, &str, Chord)]) {
+        let chords: Vec<(ModIndex, u16, Chord)> =
+            binds.iter().map(|(who, name, chord)| (*who, self.action(*who, name), *chord)).collect();
+        self.matcher.rebuild(&chords);
+    }
+
     fn route(&mut self, event: InputEvent) -> RouteDecision {
         let ctx = RouteContext {
             panel_open: self.panel_open,
             toggle_chord: TOGGLE_CHORD,
             pointer_owner: None,
-            keyboard_owner: None,
+            keyboard_owner: self.keyboard_owner,
             over_menu_button: false,
             registry: &self.registry,
             arbiter: &self.arbiter,
@@ -362,4 +373,152 @@ fn keys_pressed_while_the_panel_is_open_never_reach_the_holder() {
 
     let fresh = rig.route(key(KEY_G, true, NO_MODS));
     assert_eq!(fresh.raw_targets, mask(&[freecam]));
+}
+
+struct Chords;
+
+impl Chords {
+    fn plain(key: u32) -> Chord {
+        Chord { key, ctrl: false, shift: false, alt: false }
+    }
+
+    fn ctrl(key: u32) -> Chord {
+        Chord { key, ctrl: true, shift: false, alt: false }
+    }
+}
+
+#[test]
+fn a_letter_bound_by_the_text_owner_goes_to_its_field() {
+    let (mut rig, freecam, _, _) = four_mods();
+    rig.rebind(&[(freecam, "toggle", Chords::plain(KEY_P))]);
+    rig.keyboard_owner = Some(freecam);
+
+    let down = rig.route(key(KEY_P, true, NO_MODS));
+    let held = rig.route(repeat(KEY_P, NO_MODS));
+    let up = rig.route(key(KEY_P, false, NO_MODS));
+
+    for decision in [down, held, up] {
+        assert_eq!(decision.raw_targets, mask(&[freecam]));
+        assert_eq!(decision.keybind, None);
+        assert!(decision.consume_from_game);
+    }
+}
+
+#[test]
+fn a_chord_bound_by_the_text_owner_goes_to_its_field() {
+    let (mut rig, freecam, _, _) = four_mods();
+    rig.rebind(&[(freecam, "toggle", Chords::ctrl(KEY_Z)), (freecam, "clear_path", Chords::plain(VK_DELETE))]);
+    rig.keyboard_owner = Some(freecam);
+
+    let undo = rig.route(key(KEY_Z, true, CTRL));
+    let delete = rig.route(key(VK_DELETE, true, NO_MODS));
+
+    for decision in [undo, delete] {
+        assert_eq!(decision.raw_targets, mask(&[freecam]));
+        assert_eq!(decision.keybind, None);
+        assert!(decision.consume_from_game);
+    }
+}
+
+#[test]
+fn a_keybind_of_another_mod_does_not_run_while_a_field_has_focus() {
+    let (mut rig, _, dejavu, _) = four_mods();
+    rig.keyboard_owner = Some(dejavu);
+
+    let decision = rig.route(key(KEY_E, true, CTRL));
+
+    assert_eq!(decision.keybind, None);
+    assert_eq!(decision.raw_targets, mask(&[dejavu]));
+    assert!(decision.consume_from_game);
+}
+
+#[test]
+fn a_blocked_keybind_shows_no_toast_while_a_field_has_focus() {
+    let (mut rig, _, dejavu, minimap) = four_mods();
+    rig.acquire(dejavu, Capability::Camera);
+    rig.keyboard_owner = Some(minimap);
+
+    let decision = rig.route(key(KEY_P, true, CTRL));
+
+    assert_eq!(decision.blocked, None);
+    assert_eq!(decision.keybind, None);
+    assert_eq!(decision.raw_targets, mask(&[minimap]));
+}
+
+#[test]
+fn the_text_owner_gets_the_key_before_an_input_holder() {
+    let (mut rig, freecam, dejavu, _) = four_mods();
+    rig.acquire(freecam, Capability::Input);
+    rig.keyboard_owner = Some(dejavu);
+
+    let down = rig.route(key(KEY_G, true, NO_MODS));
+    let up = rig.route(key(KEY_G, false, NO_MODS));
+
+    assert_eq!(down.raw_targets, mask(&[dejavu]));
+    assert_eq!(up.raw_targets, mask(&[dejavu]));
+}
+
+#[test]
+fn the_manager_toggle_chord_still_opens_the_panel_while_a_field_has_focus() {
+    let (mut rig, freecam, _, _) = four_mods();
+    rig.keyboard_owner = Some(freecam);
+
+    let decision = rig.route(key(KEY_M, true, CTRL_SHIFT));
+
+    assert!(decision.toggle_panel);
+    assert!(decision.consume_from_game);
+    assert!(decision.raw_targets.is_empty());
+}
+
+#[test]
+fn the_open_panel_still_gets_the_key_while_a_field_has_focus() {
+    let (mut rig, freecam, _, _) = four_mods();
+    rig.keyboard_owner = Some(freecam);
+    rig.panel_open = true;
+
+    let decision = rig.route(key(KEY_G, true, NO_MODS));
+
+    assert!(decision.to_panel);
+    assert!(decision.raw_targets.is_empty());
+}
+
+#[test]
+fn a_keybind_pressed_before_the_field_got_focus_is_released_to_its_keybind() {
+    let (mut rig, freecam, _, minimap) = four_mods();
+    let toggle = rig.action(freecam, "toggle");
+    let down = rig.route(key(KEY_P, true, CTRL));
+    rig.keyboard_owner = Some(minimap);
+
+    let up = rig.route(key(KEY_P, false, CTRL));
+
+    assert_eq!(down.keybind, Some((freecam, toggle, KeybindPhase::Pressed)));
+    assert_eq!(up.keybind, Some((freecam, toggle, KeybindPhase::Released)));
+    assert!(up.raw_targets.is_empty());
+}
+
+#[test]
+fn a_key_pressed_in_a_field_is_released_to_the_field_after_focus_goes() {
+    let (mut rig, _, dejavu, _) = four_mods();
+    rig.keyboard_owner = Some(dejavu);
+    rig.route(key(KEY_G, true, NO_MODS));
+    rig.keyboard_owner = None;
+
+    let up = rig.route(key(KEY_G, false, NO_MODS));
+
+    assert_eq!(up.raw_targets, mask(&[dejavu]));
+    assert!(up.consume_from_game);
+}
+
+#[test]
+fn keybinds_run_again_when_no_field_has_focus() {
+    let (mut rig, freecam, dejavu, _) = four_mods();
+    rig.keyboard_owner = Some(dejavu);
+    let typed = rig.route(key(KEY_E, true, CTRL));
+    rig.route(key(KEY_E, false, CTRL));
+    rig.keyboard_owner = None;
+
+    let after = rig.route(key(KEY_E, true, CTRL));
+
+    assert_eq!(typed.keybind, None);
+    assert_eq!(after.keybind, Some((freecam, rig.action(freecam, "toggle_input"), KeybindPhase::Pressed)));
 }

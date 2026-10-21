@@ -16,6 +16,7 @@ pub struct DemoState {
     camera_line: String,
     screenshot_line: String,
     last_event: &'static str,
+    name: String,
 }
 
 impl DemoState {
@@ -29,6 +30,7 @@ impl DemoState {
             camera_line: "Camera: not held".to_string(),
             screenshot_line: String::new(),
             last_event: "none",
+            name: String::new(),
         }
     }
 
@@ -89,6 +91,15 @@ impl DemoState {
 
     pub fn set_screenshot_line(&mut self, line: String) {
         self.screenshot_line = line;
+    }
+
+    /// The text of the "Name" field, for the keyboard and clipboard checks.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn name_mut(&mut self) -> &mut String {
+        &mut self.name
     }
 
     pub fn last_event(&self) -> &'static str {
