@@ -1,0 +1,36 @@
+[package]
+name = "amm-client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+autotests = false
+
+[features]
+default = ["egui"]
+egui = ["dep:egui", "dep:studio-ui", "amm-core/egui"]
+test-support = []
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+amm-abi.workspace = true
+amm-core.workspace = true
+studio-ui = { workspace = true, optional = true }
+egui = { workspace = true, optional = true }
+curia.workspace = true
+tracing-subscriber.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+hcl-rs.workspace = true
+windows-sys.workspace = true
+
+[dev-dependencies]
+amm-client = { path = ".", features = ["test-support"] }
+chrono.workspace = true
+tracing.workspace = true

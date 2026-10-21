@@ -1,0 +1,26 @@
+[package]
+name = "studio-ui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+egui.workspace = true
+curia.workspace = true
+
+[dev-dependencies]
+eframe.workspace = true
+image.workspace = true
+
+[[example]]
+name = "gallery"
+path = "examples/gallery/main.rs"
