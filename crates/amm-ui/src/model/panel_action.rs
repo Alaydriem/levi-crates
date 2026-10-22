@@ -1,5 +1,6 @@
 use amm_core::config::{ExclusiveResolution, PairKey, SuspensionResolution};
 use amm_core::structs::descriptor::Chord;
+use amm_core::structs::menu::MenuEntryId;
 use amm_core::structs::registry::ModIndex;
 
 use crate::model::PanelTab;
@@ -12,11 +13,24 @@ pub enum PanelAction {
     Open,
     Close,
     SetEnabled(ModIndex, bool),
-    Edit { mod_index: ModIndex, path: String, value: hcl::Value },
-    Rebind { mod_index: ModIndex, action: u16, chord: Chord },
+    Edit {
+        mod_index: ModIndex,
+        path: String,
+        value: hcl::Value,
+    },
+    Rebind {
+        mod_index: ModIndex,
+        action: u16,
+        chord: Chord,
+    },
     RebindToggle(Chord),
     SetExclusive(PairKey, ExclusiveResolution),
     SetSuspension(PairKey, SuspensionResolution),
     Select(Option<ModIndex>),
     SelectTab(PanelTab),
+    /// The person clicked menu entry `id` of the mod in `owner` in the corner row.
+    MenuEntry {
+        owner: ModIndex,
+        id: MenuEntryId,
+    },
 }

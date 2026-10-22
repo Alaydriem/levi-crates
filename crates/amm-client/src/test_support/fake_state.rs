@@ -38,6 +38,9 @@ pub struct FakeState {
     // The answer to `held_by_other` per capability; a capability not in the map is not held by another mod
     pub held_by_other: HashMap<Capability, bool>,
     pub texture_grant: TextureGrant,
+    // (label, mark, screens) of each `register_menu_entry` call, and the id it answers with
+    pub menu_entries: Vec<(String, String, u8)>,
+    pub menu_entry_id: u16,
 }
 
 impl FakeState {
@@ -65,6 +68,8 @@ impl FakeState {
             screenshot_layers: Vec::new(),
             held_by_other: HashMap::new(),
             texture_grant: TextureGrant { bytes: 0, count: 0 },
+            menu_entries: Vec::new(),
+            menu_entry_id: 1,
         }
     }
 

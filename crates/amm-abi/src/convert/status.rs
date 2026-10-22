@@ -27,6 +27,8 @@ impl From<&ManagerError> for AmmStatus {
             ManagerError::Setting { .. } => AmmStatus::InvalidArgument,
             ManagerError::Store(StoreError::QueueFull) => AmmStatus::QueueFull,
             ManagerError::Store(_) => AmmStatus::Unsupported,
+            ManagerError::MenuEntry => AmmStatus::InvalidArgument,
+            ManagerError::MenuEntryLimit => AmmStatus::QueueFull,
         }
     }
 }

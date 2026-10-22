@@ -3,6 +3,7 @@ use amm_core::services::manager::ManagerService;
 use amm_core::services::settings::ChordText;
 use amm_core::structs::clash::{ClashKind, ClashReport};
 use amm_core::structs::descriptor::{Capability, Chord, ClaimMode, KeyScope, KeybindDecl, SettingField};
+use amm_core::structs::menu::MenuEntry;
 use amm_core::structs::registry::{ModIndex, RegisteredMod};
 use amm_core::structs::settings::SettingsDraft;
 use amm_core::structs::toast::Toast;
@@ -51,6 +52,11 @@ impl<'a> PanelModel<'a> {
     /// True while the start or pause screen is on top, the config allows the button and the panel is closed.
     pub fn menu_button_visible(&self) -> bool {
         self.menu_button
+    }
+
+    /// The menu entries mods placed for the screen on top, in registration order.
+    pub fn menu_entries(&self) -> impl Iterator<Item = &'a MenuEntry> + 'a {
+        self.manager.menu_entries().for_screen(self.manager.menu_screen())
     }
 
     pub fn config(&self) -> &'a ManagerConfig {

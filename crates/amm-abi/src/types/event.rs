@@ -16,6 +16,7 @@ use super::AmmEventKind;
 ///   `phase` 0 ends here.
 /// - `ScreenshotWritten`: `code` is the capture sequence, `phase` is 1 when the PNG file is in place and 0 when
 ///   the encode or the write failed, which leaves no file.
+/// - `MenuEntryClicked`: `code` is the id `register_menu_entry` gave the entry.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AmmEvent {

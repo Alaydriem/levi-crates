@@ -44,6 +44,10 @@ impl StudioPalette {
     pub const AXIS_Y: Color32 = Color32::from_rgb(0x4F, 0xD1, 0xA5);
     pub const AXIS_Z: Color32 = Color32::from_rgb(0x6C, 0xB8, 0xFF);
 
+    // the recording dot and the live timer
+    pub const RECORD: Color32 = Color32::from_rgb(0xFF, 0x4D, 0x5E);
+    pub const RECORD_HOVER: Color32 = Color32::from_rgb(0xFF, 0x64, 0x73);
+
     pub const WHITE: Color32 = Color32::WHITE;
     pub const SHADOW: Color32 = Color32::from_rgba_unmultiplied_const(0, 0, 0, 150);
     // the map behind an open dialog

@@ -13,6 +13,7 @@ use crate::services::descriptor::DescriptorChecker;
 use crate::services::event::EventHub;
 use crate::services::input::{ChordMatcher, CursorSet, InputRouter, KeyState};
 use crate::services::lease::LeaseArbiter;
+use crate::services::menu::MenuEntries;
 use crate::services::registry::ModRegistry;
 use crate::services::settings::{DraftBook, EffectiveKeys, ManagerConfigFile, SchemaChecker};
 use crate::services::snapshot::SnapshotBuilder;
@@ -26,6 +27,7 @@ use crate::structs::frame::{FrameReplyData, LayerKind, MenuScreen};
 use crate::structs::input::{InputEvent, RouteContext, RouteDecision};
 use crate::structs::lease::AcquireOutcome;
 use crate::structs::manager::{ManagedMod, TextureGrant};
+use crate::structs::menu::{MenuEntryId, MenuScreens};
 use crate::structs::registry::{ModIndex, ModMask};
 use crate::structs::settings::{CheckedConfig, HclDocument, SettingsDraft};
 use crate::structs::snapshot::{LayerEntry, RenderSnapshot};
@@ -61,6 +63,7 @@ pub struct ManagerService {
     key_state: KeyState,
     cursor: CursorSet,
     panel: PanelState,
+    menu: MenuEntries,
     replies: LayerReplies,
     captures: CaptureBook,
     mods: Vec<Option<ManagedMod>>,
@@ -98,6 +101,7 @@ impl ManagerService {
             key_state: KeyState::new(),
             cursor: CursorSet::new(),
             panel: PanelState::new(config.menu_button),
+            menu: MenuEntries::new(),
             replies: LayerReplies::new(slots),
             captures: CaptureBook::new(),
             mods: (0..slots).map(|_| None).collect(),
@@ -175,6 +179,7 @@ impl ManagerService {
         }
         self.arbiter.release_all(index, &mut self.hub);
         self.captures.forget(index);
+        self.menu.forget(index);
         self.cursor.remove(index);
         self.registry.unregister(index);
         self.router.forget(index);
@@ -430,6 +435,37 @@ impl ManagerService {
     /// pointer inside it.
     pub fn place_menu_button(&mut self, rect: Option<[f32; 4]>) {
         self.panel.place_menu_button(rect);
+    }
+
+    /// Places a menu entry of the mod in `index` in the corner row, on `screens`. Returns its id.
+    pub fn register_menu_entry(
+        &mut self,
+        index: ModIndex,
+        label: &str,
+        mark: &str,
+        screens: MenuScreens,
+    ) -> Result<MenuEntryId, ManagerError> {
+        if self.registry.get(index).is_none() {
+            return Err(ManagerError::UnknownMod);
+        }
+        self.menu.add(index, label, mark, screens)
+    }
+
+    /// The person clicked entry `id` of the mod in `index`: that mod gets `MenuEntryClicked`. An entry the mod no
+    /// longer has sends nothing.
+    pub fn menu_entry_clicked(&mut self, index: ModIndex, id: MenuEntryId) {
+        if self.menu.contains(index, id) {
+            self.hub.push(index, ModEvent::MenuEntryClicked { entry: id.0 });
+        }
+    }
+
+    pub fn menu_entries(&self) -> &MenuEntries {
+        &self.menu
+    }
+
+    /// The game screen on top, as the last `set_menu_screen` gave it.
+    pub fn menu_screen(&self) -> MenuScreen {
+        self.panel.menu_screen()
     }
 
     /// The menu button's rect while it shows.

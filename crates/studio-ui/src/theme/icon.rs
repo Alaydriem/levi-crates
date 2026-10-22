@@ -22,4 +22,7 @@ impl Icon {
     pub const LOCK: char = '\u{E72E}';
     pub const BLOCKED: char = '\u{E733}';
     pub const APPS: char = '\u{ECAA}';
+    pub const PLAY: char = '\u{E768}';
+    pub const PAUSE: char = '\u{E769}';
+    pub const PUZZLE: char = '\u{EA86}';
 }

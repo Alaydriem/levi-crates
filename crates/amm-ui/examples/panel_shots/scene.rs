@@ -5,6 +5,7 @@ use amm_core::errors::ManagerError;
 use amm_core::services::manager::ManagerService;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::input::{InputEvent, Modifiers};
+use amm_core::structs::menu::MenuScreens;
 use amm_core::structs::registry::ModIndex;
 
 // The four fixture mods (minimap with its full settings schema) in a state that shows every part of
@@ -43,6 +44,7 @@ impl Scene {
             manager.acquire(freecam, cap, 0).map_err(fail)?;
         }
         manager.acquire(dejavu, Capability::Camera, 0).map_err(fail)?;
+        manager.register_menu_entry(dejavu, "Dejavu", "DV", MenuScreens::START).map_err(fail)?;
         manager.acquire(freecam, Capability::Camera, Self::DENIED_MS).map_err(fail)?;
         let ctrl = Modifiers { ctrl: true, shift: false, alt: false };
         manager.route(&InputEvent::Key { vk: Self::KEY_P, down: true, repeat: false, mods: ctrl }, Self::BLOCKED_MS);

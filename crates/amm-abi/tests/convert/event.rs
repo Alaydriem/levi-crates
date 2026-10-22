@@ -11,6 +11,7 @@ fn every_event_kind_survives_core_to_abi_to_core() {
         ModEvent::Disabled,
         ModEvent::SettingsChanged { paths: 0xDEAD_BEEF },
         ModEvent::WorldReloadApply,
+        ModEvent::MenuEntryClicked { entry: 2 },
         ModEvent::PointerButton { button: 2, down: true, x: -12.5, y: 400.25 },
         ModEvent::PointerButton { button: 0, down: false, x: 0.0, y: 1.0 },
         ModEvent::PointerDelta { dx: -3.0, dy: 4.5 },

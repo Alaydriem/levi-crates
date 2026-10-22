@@ -14,4 +14,8 @@ pub enum ManagerError {
     Setting { path: String },
     #[error(transparent)]
     Store(#[from] StoreError),
+    #[error("a menu entry needs a 1 to 24 character label, a 1 to 3 character mark and at least one screen")]
+    MenuEntry,
+    #[error("the mod or the manager already has the most menu entries it may hold")]
+    MenuEntryLimit,
 }

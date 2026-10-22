@@ -1,0 +1,55 @@
+# Messages of the levi-ui domain, written by levi-i18n-tool. Do not edit.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Domain: levi-ui\n"
+
+msgid "Close"
+msgstr ""
+
+msgid "Dismiss"
+msgstr ""
+
+msgid "Clear search"
+msgstr ""
+
+#. A toast's age when it is less than one second old
+msgid "now"
+msgstr ""
+
+#. A toast's age in whole seconds
+#, python-brace-format
+msgid "{count} s"
+msgid_plural "{count} s"
+msgstr[0] ""
+msgstr[1] ""
+
+#. A chip that stands for the items that do not fit in the row
+#, python-brace-format
+msgid "+{count}"
+msgstr ""
+
+#. Shown in a key chord cell while the key is being captured
+msgid "Press a key"
+msgstr ""
+
+msgid "Esc cancels"
+msgstr ""
+
+#. {name} is the other mod that uses the same key chord
+#, python-brace-format
+msgid "Also bound by {name}"
+msgstr ""
+
+#. {value} is the setting value the game wrote while an edit was open
+#, python-brace-format
+msgid "Changed in game to {value}"
+msgstr ""
+
+msgid "Use #RRGGBB or #RRGGBBAA."
+msgstr ""
+
+msgid "Enter a number"
+msgstr ""

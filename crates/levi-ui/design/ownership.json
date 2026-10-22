@@ -1,0 +1,261 @@
+{
+  "owners": {
+    "--color-bg-app": "levi-ui",
+    "--color-bg-panel": "levi-ui",
+    "--color-bg-raised": "levi-ui",
+    "--color-bg-field": "levi-ui",
+    "--color-bg-hover": "levi-ui",
+    "--color-bg-active": "levi-ui",
+    "--color-bg-overlay": "levi-ui",
+    "--color-card": "levi-ui",
+    "--color-pill": "levi-ui",
+    "--color-line": "levi-ui",
+    "--color-line-strong": "levi-ui",
+    "--color-line-overlay": "levi-ui",
+    "--color-text": "levi-ui",
+    "--color-text-dim": "levi-ui",
+    "--color-text-faint": "levi-ui",
+    "--color-accent": "levi-ui",
+    "--color-accent-hover": "levi-ui",
+    "--color-accent-press": "levi-ui",
+    "--color-accent-soft": "levi-ui",
+    "--color-success": "levi-ui",
+    "--color-warning": "levi-ui",
+    "--color-warning-soft": "levi-ui",
+    "--color-danger": "levi-ui",
+    "--color-danger-soft": "levi-ui",
+    "--color-axis-x": "studio-ui",
+    "--color-axis-y": "studio-ui",
+    "--color-axis-z": "studio-ui",
+    "--color-shadow": "levi-ui",
+    "--color-dim": "levi-ui",
+    "--color-playhead": "studio-ui",
+    "--color-playhead-hover": "studio-ui",
+    "--color-track-camera": "studio-ui",
+    "--color-track-fov": "studio-ui",
+    "--color-track-time": "studio-ui",
+    "--color-track-weather": "studio-ui",
+    "--color-track-timelapse": "studio-ui",
+    "--color-scene-1": "studio-ui",
+    "--color-scene-2": "studio-ui",
+    "--color-scene-3": "studio-ui",
+    "--color-scene-4": "studio-ui",
+    "--color-scene-5": "studio-ui",
+    "--color-scene-6": "studio-ui",
+    "--color-marker": "studio-ui",
+    "--color-checkpoint": "studio-ui",
+    "--color-status-works": "studio-ui",
+    "--color-status-engine": "studio-ui",
+    "--color-status-planned": "studio-ui",
+    "--color-status-mockup": "studio-ui",
+    "--color-status-missing": "studio-ui",
+    "--color-scene-camera": "studio-ui",
+    "--color-on-accent": "levi-ui",
+    "--color-accent-soft-hover": "levi-ui",
+    "--color-accent-soft-press": "levi-ui",
+    "--color-danger-hover": "levi-ui",
+    "--color-danger-press": "levi-ui",
+    "--color-focus-ring": "levi-ui",
+    "--color-mode-edit": "studio-ui",
+    "--color-mode-preview": "studio-ui",
+    "--color-mode-read-only": "studio-ui",
+    "--color-mode-busy": "studio-ui",
+    "--color-mode-preview-soft": "studio-ui",
+    "--color-selection": "levi-ui",
+    "--color-caret": "levi-ui",
+    "--color-checker-light": "levi-ui",
+    "--color-checker-dark": "levi-ui",
+    "--font-ui": "levi-ui",
+    "--font-icons": "levi-ui",
+    "--text-caption": "levi-ui",
+    "--text-note": "levi-ui",
+    "--text-help": "levi-ui",
+    "--text-label": "levi-ui",
+    "--text-body": "levi-ui",
+    "--text-title": "levi-ui",
+    "--text-heading": "levi-ui",
+    "--text-icon-small": "levi-ui",
+    "--text-icon": "levi-ui",
+    "--text-micro": "levi-ui",
+    "--text-display": "levi-ui",
+    "--font-weight-regular": "levi-ui",
+    "--font-weight-semibold": "levi-ui",
+    "--tracking-section": "levi-ui",
+    "--leading-micro": "levi-ui",
+    "--leading-caption": "levi-ui",
+    "--leading-note": "levi-ui",
+    "--leading-help": "levi-ui",
+    "--leading-label": "levi-ui",
+    "--leading-body": "levi-ui",
+    "--leading-title": "levi-ui",
+    "--leading-heading": "levi-ui",
+    "--leading-display": "levi-ui",
+    "--opacity-muted": "levi-ui",
+    "--opacity-track": "levi-ui",
+    "--opacity-soft": "levi-ui",
+    "--breakpoint-small": "levi-ui",
+    "--breakpoint-full": "levi-ui",
+    "--container-menu": "levi-ui",
+    "--container-dialog": "levi-ui",
+    "--container-inspector": "studio-ui",
+    "--container-scene-menu": "studio-ui",
+    "--container-rail": "studio-ui",
+    "--spacing-s": "levi-ui",
+    "--spacing-m": "levi-ui",
+    "--spacing-l": "levi-ui",
+    "--spacing-row": "levi-ui",
+    "--spacing-field": "levi-ui",
+    "--spacing-button": "levi-ui",
+    "--spacing-top-bar": "studio-ui",
+    "--spacing-transport": "studio-ui",
+    "--spacing-status-bar": "levi-ui",
+    "--spacing-lane": "levi-ui",
+    "--spacing-focus-gap": "levi-ui",
+    "--spacing-focus-ring": "levi-ui",
+    "--spacing-control-small": "levi-ui",
+    "--spacing-xs": "levi-ui",
+    "--spacing-button-x": "levi-ui",
+    "--spacing-scrollbar": "levi-ui",
+    "--spacing-splitter": "levi-ui",
+    "--spacing-border": "levi-ui",
+    "--spacing-divider": "levi-ui",
+    "--spacing-border-strong": "levi-ui",
+    "--spacing-stroke-curve": "levi-ui",
+    "--spacing-dot": "levi-ui",
+    "--spacing-swatch": "levi-ui",
+    "--spacing-spinner-small": "levi-ui",
+    "--spacing-spinner": "levi-ui",
+    "--spacing-stroke-thin": "levi-ui",
+    "--spacing-indicator": "levi-ui",
+    "--spacing-tile": "levi-ui",
+    "--spacing-tile-large": "levi-ui",
+    "--radius-small": "levi-ui",
+    "--radius-control": "levi-ui",
+    "--radius-panel": "levi-ui",
+    "--radius-full": "levi-ui"
+  },
+  "selectors": [
+    {
+      "crate": "studio-ui",
+      "name": "SceneColor",
+      "variants": [
+        [
+          "Lime",
+          "--color-scene-1"
+        ],
+        [
+          "Pink",
+          "--color-scene-2"
+        ],
+        [
+          "Orchid",
+          "--color-scene-3"
+        ],
+        [
+          "Periwinkle",
+          "--color-scene-4"
+        ],
+        [
+          "Peach",
+          "--color-scene-5"
+        ],
+        [
+          "Sand",
+          "--color-scene-6"
+        ]
+      ]
+    },
+    {
+      "crate": "studio-ui",
+      "name": "TrackColor",
+      "variants": [
+        [
+          "Camera",
+          "--color-track-camera"
+        ],
+        [
+          "Fov",
+          "--color-track-fov"
+        ],
+        [
+          "Time",
+          "--color-track-time"
+        ],
+        [
+          "Weather",
+          "--color-track-weather"
+        ],
+        [
+          "Timelapse",
+          "--color-track-timelapse"
+        ]
+      ]
+    },
+    {
+      "crate": "studio-ui",
+      "name": "StatusColor",
+      "variants": [
+        [
+          "Works",
+          "--color-status-works"
+        ],
+        [
+          "Engine",
+          "--color-status-engine"
+        ],
+        [
+          "Planned",
+          "--color-status-planned"
+        ],
+        [
+          "Mockup",
+          "--color-status-mockup"
+        ],
+        [
+          "Missing",
+          "--color-status-missing"
+        ]
+      ]
+    },
+    {
+      "crate": "studio-ui",
+      "name": "ModeColor",
+      "variants": [
+        [
+          "Edit",
+          "--color-mode-edit"
+        ],
+        [
+          "Preview",
+          "--color-mode-preview"
+        ],
+        [
+          "ReadOnly",
+          "--color-mode-read-only"
+        ],
+        [
+          "Busy",
+          "--color-mode-busy"
+        ]
+      ]
+    },
+    {
+      "crate": "studio-ui",
+      "name": "AxisColor",
+      "variants": [
+        [
+          "X",
+          "--color-axis-x"
+        ],
+        [
+          "Y",
+          "--color-axis-y"
+        ],
+        [
+          "Z",
+          "--color-axis-z"
+        ]
+      ]
+    }
+  ]
+}

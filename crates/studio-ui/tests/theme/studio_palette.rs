@@ -78,3 +78,11 @@ fn text_greys_keep_a_clear_step_between_levels() {
     assert!(text > dim * 1.4, "TEXT {text:.2} is too close to TEXT_DIM {dim:.2}");
     assert!(dim > faint * 1.4, "TEXT_DIM {dim:.2} is too close to TEXT_FAINT {faint:.2}");
 }
+
+#[test]
+fn record_colour_has_text_contrast_on_card() {
+    let card = StudioPalette::mix(StudioPalette::BG_APP, StudioPalette::BG_RAISED, 0.94);
+
+    assert!(Wcag::contrast(StudioPalette::RECORD, card) >= 3.0);
+    assert!(Wcag::contrast(StudioPalette::RECORD_HOVER, card) >= 3.0);
+}

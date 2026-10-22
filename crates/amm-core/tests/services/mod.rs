@@ -7,6 +7,7 @@ mod event;
 mod input;
 mod lease;
 mod manager;
+mod menu;
 mod panic;
 mod registry;
 mod settings;

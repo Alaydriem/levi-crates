@@ -14,6 +14,10 @@ impl MenuButton {
         Self { allowed, screen: MenuScreen::None, rect: None }
     }
 
+    pub fn screen(&self) -> MenuScreen {
+        self.screen
+    }
+
     pub fn allowed(&self) -> bool {
         self.allowed
     }

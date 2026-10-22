@@ -2,11 +2,11 @@ use amm_core::services::egui_bridge::{MeshFlattener, RawInputBuilder};
 use amm_core::structs::frame::{FrameInputData, UiEvent, UiEventKind};
 use amm_core::structs::input::Modifiers;
 use amm_core::structs::mesh::MeshBuffers;
-use egui::{Context, Pos2, RawInput, Rect, vec2};
+use egui::{Context, RawInput, Rect};
 use studio_ui::theme::{FontSource, StudioTheme};
 
 use crate::model::{PanelAction, PanelController, PanelIntent, PanelModel};
-use crate::views::{MenuButtonView, PanelLayout};
+use crate::views::PanelLayout;
 
 /// The manager's own egui pass: the panel, the toasts and the menu button. It owns the
 /// egui context, the panel state and the reused event, intent and action buffers. The host runs it
@@ -51,17 +51,20 @@ impl PanelRuntime {
         self.builder.build(&filtered, &mut raw);
         let controller = &self.controller;
         let intents = &mut self.intents;
-        let mut output = self.ctx.run_ui(raw, |ui| PanelLayout::show(ui, model, controller, intents));
+        let mut corner = None;
+        let mut output = self.ctx.run_ui(raw, |ui| corner = PanelLayout::show(ui, model, controller, intents));
         let ppp = output.pixels_per_point;
         let primitives = self.ctx.tessellate(std::mem::take(&mut output.shapes), ppp);
-        MeshFlattener::flatten(&primitives, &output.textures_delta, ppp, out);
+        let textures = self.ctx.tex_manager();
+        MeshFlattener::flatten(&primitives, &output.textures_delta, &textures.read(), ppp, out);
         output.textures_delta.clear();
-        self.menu_button = model.menu_button_visible().then(|| Self::menu_button_pixels(input));
+        self.menu_button = corner.map(|rect| Self::pixels(input, rect));
         self.apply_intents();
         &self.actions
     }
 
-    /// Where the last pass drew the menu button in physical pixels, or `None` when it drew none.
+    /// Where the last pass drew the corner row (the Mods button and the menu entries) in physical pixels, or `None`
+    /// when it drew none.
     pub fn menu_button_rect(&self) -> Option<[f32; 4]> {
         self.menu_button
     }
@@ -77,10 +80,9 @@ impl PanelRuntime {
         &mut self.controller
     }
 
-    fn menu_button_pixels(input: &FrameInputData) -> [f32; 4] {
+    // a rect in points as physical pixels
+    fn pixels(input: &FrameInputData, rect: Rect) -> [f32; 4] {
         let ppp = input.pixels_per_point.max(f32::EPSILON);
-        let screen = Rect::from_min_size(Pos2::ZERO, vec2(input.width as f32 / ppp, input.height as f32 / ppp));
-        let rect = MenuButtonView::rect(screen);
         [rect.min.x * ppp, rect.min.y * ppp, rect.max.x * ppp, rect.max.y * ppp]
     }
 

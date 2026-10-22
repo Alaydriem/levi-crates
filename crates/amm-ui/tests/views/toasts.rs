@@ -1,4 +1,4 @@
-use amm_ui::views::{MenuButtonView, ToastsView};
+use amm_ui::views::ToastsView;
 use egui::{Pos2, Rect, vec2};
 
 fn screen() -> Rect {
@@ -7,7 +7,7 @@ fn screen() -> Rect {
 
 #[test]
 fn toasts_stack_above_the_menu_button_while_it_shows() {
-    let button = MenuButtonView::rect(screen());
+    let button = Rect::from_min_max(egui::pos2(1744.0, 996.0), egui::pos2(1896.0, 1032.0));
 
     let (right, bottom) = ToastsView::anchor(screen(), None, Some(button), 84.0);
 

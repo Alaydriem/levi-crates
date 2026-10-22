@@ -49,6 +49,7 @@ impl FakeTable {
             held_by_other: Some(Self::held_by_other),
             texture_budget: Some(Self::texture_budget),
             request_screenshot_layers: Some(Self::request_screenshot_layers),
+            register_menu_entry: Some(Self::register_menu_entry),
         }
     }
 
@@ -71,6 +72,19 @@ impl FakeTable {
     #[cfg(feature = "egui")]
     pub fn link<H: FrameHandler + Send + 'static>(handler: H) -> ManagerLink {
         match ManagerLink::new(Self::table(), Self::DESCRIPTOR, Path::new(Self::CONFIG_DIR), handler) {
+            Ok(link) => link,
+            Err(error) => panic!("register failed: {error}"),
+        }
+    }
+
+    /// A link with no frame callback on a leaked copy of `api`, for a test of a table with some slots missing.
+    pub fn link_without_frame_on(api: AmmApi) -> ManagerLink {
+        // SAFETY: the table is leaked, so it stays valid for the process, and it is a complete AmmApi
+        let table = match unsafe { ApiTable::new(Self::leak(api)) } {
+            Ok(table) => table,
+            Err(error) => panic!("fake table rejected: {error}"),
+        };
+        match ManagerLink::without_frame(table, Self::DESCRIPTOR, Path::new(Self::CONFIG_DIR)) {
             Ok(link) => link,
             Err(error) => panic!("register failed: {error}"),
         }
@@ -116,6 +130,11 @@ impl FakeTable {
     /// mod.
     pub fn set_held_by_other(capability: Capability, held: bool) {
         Self::with(|state| state.held_by_other.insert(capability, held));
+    }
+
+    /// Sets the id `register_menu_entry` answers with.
+    pub fn set_menu_entry_id(id: u16) {
+        Self::with(|state| state.menu_entry_id = id);
     }
 
     /// Sets the grant `texture_budget` answers with.
@@ -324,6 +343,26 @@ impl FakeTable {
             return 0;
         };
         u8::from(Self::with(|state| state.held_by_other.get(&capability).copied().unwrap_or(false)))
+    }
+
+    unsafe extern "C" fn register_menu_entry(
+        _: AmmHandle,
+        label: *const u8,
+        label_len: usize,
+        mark: *const u8,
+        mark_len: usize,
+        screens: u8,
+        out_id: *mut u16,
+    ) -> AmmStatus {
+        // SAFETY: the link passes label_len and mark_len readable bytes for the call
+        let (label, mark) = unsafe { (Self::text(label, label_len), Self::text(mark, mark_len)) };
+        let id = Self::with(|state| {
+            state.menu_entries.push((label, mark, screens));
+            state.menu_entry_id
+        });
+        // SAFETY: the link passes a writable out pointer for the call
+        unsafe { out_id.write(id) };
+        AmmStatus::Ok
     }
 
     unsafe extern "C" fn texture_budget(_: AmmHandle, out_bytes: *mut u64, out_count: *mut u32) -> AmmStatus {

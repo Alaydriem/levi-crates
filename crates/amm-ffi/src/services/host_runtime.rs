@@ -18,6 +18,7 @@ use amm_core::structs::frame::{FrameInputData, LayerKind, UiEvent, UiEventKind};
 use amm_core::structs::input::{InputEvent, Modifiers, RouteDecision};
 use amm_core::structs::lease::AcquireOutcome;
 use amm_core::structs::manager::TextureGrant;
+use amm_core::structs::menu::MenuScreens;
 use amm_core::structs::mesh::MeshBuffers;
 use amm_core::structs::registry::{ModIndex, ModMask};
 use amm_core::structs::settings::HclDocument;
@@ -297,6 +298,19 @@ impl HostRuntime {
     pub fn set_setting(&mut self, handle: AmmHandle, path: &str, value_hcl: &str) -> Result<(), AmmStatus> {
         let index = self.index(handle)?;
         self.manager.set_setting(index, path, value_hcl, self.now_ms).map_err(|error| AmmStatus::from(&error))
+    }
+
+    pub fn register_menu_entry(
+        &mut self,
+        handle: AmmHandle,
+        label: &str,
+        mark: &str,
+        screens: MenuScreens,
+    ) -> Result<u16, AmmStatus> {
+        let index = self.index(handle)?;
+        let id =
+            self.manager.register_menu_entry(index, label, mark, screens).map_err(|error| AmmStatus::from(&error))?;
+        Ok(id.0)
     }
 
     pub fn set_cursor_mode(&mut self, handle: AmmHandle, on: bool) -> Result<(), AmmStatus> {
@@ -581,6 +595,10 @@ impl HostRuntime {
             PanelAction::Open => {
                 self.manager.set_panel_open(true);
                 curia::info!("panel opened from the menu button");
+                Ok(())
+            }
+            PanelAction::MenuEntry { owner, id } => {
+                self.manager.menu_entry_clicked(*owner, *id);
                 Ok(())
             }
             PanelAction::Close => {

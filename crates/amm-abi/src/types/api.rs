@@ -124,4 +124,22 @@ pub struct AmmApi {
             out_sequence: *mut u32,
         ) -> AmmStatus,
     >,
+    /// Game thread. Since 1.4. Places a button for the mod in the corner row of the start and pause screens, left
+    /// of the Mods button: a tile with `mark` (1 to 3 characters) and `label` (1 to 24 characters). `screens` is a
+    /// bit set: 1 the start screen, 2 the pause screen; other bits are dropped, and no screen bit is
+    /// `InvalidArgument`, as is a label or mark of the wrong length. On `Ok`, `out_id` gets the entry id, counted
+    /// from 1 within the mod; a click on the entry sends the mod `MenuEntryClicked` with that id in `code`. A mod
+    /// holds at most 4 entries and the manager 8, past either `QueueFull`. The entries go when the mod
+    /// unregisters. A null text or `out_id` is `NullPointer`. `label` and `mark` are valid only for the call.
+    pub register_menu_entry: Option<
+        unsafe extern "C" fn(
+            handle: AmmHandle,
+            label: *const u8,
+            label_len: usize,
+            mark: *const u8,
+            mark_len: usize,
+            screens: u8,
+            out_id: *mut u16,
+        ) -> AmmStatus,
+    >,
 }

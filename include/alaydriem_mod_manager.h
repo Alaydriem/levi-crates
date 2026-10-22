@@ -15,7 +15,7 @@
 /*
  The ABI minor version. It grows when functions are added at the end of the table.
  */
-#define AMM_ABI_MINOR 3
+#define AMM_ABI_MINOR 4
 
 /*
  The result code of a table function.
@@ -137,6 +137,10 @@ enum AmmEventKind
    The file of capture `code` (its sequence) is in place (`phase` 1) or the encode or write failed (`phase` 0).
    */
   AMM_EVENT_KIND_SCREENSHOT_WRITTEN,
+  /*
+   Since 1.4. The person clicked the mod's menu entry whose id is in `code`.
+   */
+  AMM_EVENT_KIND_MENU_ENTRY_CLICKED,
 };
 #ifndef __cplusplus
 typedef uint8_t AmmEventKind;
@@ -241,6 +245,7 @@ typedef struct AmmAcquireResult {
    `phase` 0 ends here.
  - `ScreenshotWritten`: `code` is the capture sequence, `phase` is 1 when the PNG file is in place and 0 when
    the encode or the write failed, which leaves no file.
+ - `MenuEntryClicked`: `code` is the id `register_menu_entry` gave the entry.
  */
 typedef struct AmmEvent {
   AmmEventKind kind;
@@ -523,6 +528,22 @@ typedef struct AmmApi {
                                          uintptr_t path_len,
                                          uint8_t layers,
                                          uint32_t *out_sequence);
+  /*
+   Game thread. Since 1.4. Places a button for the mod in the corner row of the start and pause screens, left
+   of the Mods button: a tile with `mark` (1 to 3 characters) and `label` (1 to 24 characters). `screens` is a
+   bit set: 1 the start screen, 2 the pause screen; other bits are dropped, and no screen bit is
+   `InvalidArgument`, as is a label or mark of the wrong length. On `Ok`, `out_id` gets the entry id, counted
+   from 1 within the mod; a click on the entry sends the mod `MenuEntryClicked` with that id in `code`. A mod
+   holds at most 4 entries and the manager 8, past either `QueueFull`. The entries go when the mod
+   unregisters. A null text or `out_id` is `NullPointer`. `label` and `mark` are valid only for the call.
+   */
+  AmmStatus (*register_menu_entry)(struct AmmHandle handle,
+                                   const uint8_t *label,
+                                   uintptr_t label_len,
+                                   const uint8_t *mark,
+                                   uintptr_t mark_len,
+                                   uint8_t screens,
+                                   uint16_t *out_id);
 } AmmApi;
 
 #endif  /* ALAYDRIEM_MOD_MANAGER_H */

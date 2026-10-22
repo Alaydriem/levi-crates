@@ -4,8 +4,7 @@ use studio_ui::widgets::Draw;
 
 use crate::model::{PanelController, PanelIntent, PanelModel, PanelPage};
 use crate::views::{
-    ConflictsView, HeaderView, KeybindsPage, ManagerSettingsView, MenuButtonView, ModDetailView, ModListView,
-    ToastsView,
+    ConflictsView, CornerRowView, HeaderView, KeybindsPage, ManagerSettingsView, ModDetailView, ModListView, ToastsView,
 };
 
 /// One pass of the manager's own UI over the whole screen: the panel when it is open, the toasts,
@@ -16,7 +15,13 @@ impl PanelLayout {
     const PANEL_MAX: (f32, f32) = (1180.0, 720.0);
     const SCREEN_MARGIN: f32 = 32.0;
 
-    pub fn show(ui: &mut Ui, model: &PanelModel, controller: &PanelController, out: &mut Vec<PanelIntent>) {
+    /// Returns the rect of the corner row when it drew one, in points.
+    pub fn show(
+        ui: &mut Ui,
+        model: &PanelModel,
+        controller: &PanelController,
+        out: &mut Vec<PanelIntent>,
+    ) -> Option<Rect> {
         let screen = ui.max_rect();
         let mut panel = None;
         if model.panel_open() {
@@ -26,10 +31,9 @@ impl PanelLayout {
             Self::panel(ui, rect, model, controller, out);
             panel = Some(rect);
         }
-        if model.menu_button_visible() {
-            MenuButtonView::show(ui, screen, out);
-        }
-        ToastsView::show(ui.ctx(), screen, panel, model);
+        let corner = if model.menu_button_visible() { CornerRowView::show(ui, screen, model, out) } else { None };
+        ToastsView::show(ui.ctx(), screen, panel, corner, model);
+        corner
     }
 
     /// The panel's rect on a screen: centred, inside a 32 point margin, at most 1180 by 720.

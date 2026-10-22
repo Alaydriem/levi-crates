@@ -15,6 +15,7 @@ workspace = true
 
 [dependencies]
 egui.workspace = true
+levi-ui.workspace = true
 curia.workspace = true
 
 [dev-dependencies]

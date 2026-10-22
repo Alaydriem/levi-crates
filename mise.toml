@@ -95,10 +95,64 @@ description = "Opens the studio-ui widget gallery example"
 dir = "{{config_root}}"
 run = "cargo run --release -p studio-ui --example gallery --"
 
+[tasks."levi-ui:gallery"]
+description = "Opens the levi-ui gallery: one page per Paper widget sheet"
+dir = "{{config_root}}"
+run = "cargo run --release -p levi-ui --features gallery --example widget_gallery"
+
+[tasks."levi-ui:snapshots"]
+description = "Rewrites the levi-ui sheet snapshots in crates/levi-ui/tests/snapshots; compare them with Paper before keeping them"
+dir = "{{config_root}}"
+env = { UPDATE_SNAPSHOTS = "1" }
+run = "cargo nextest run -p levi-ui --no-fail-fast snapshot::"
+
 [tasks.panel-shots]
 description = "Writes the manager panel screenshots into docs/findings/amm-ui"
 dir = "{{config_root}}"
 run = "cargo run --release -p amm-ui --example panel_shots -- docs/findings/amm-ui"
+
+# Translation catalogs: each crate that shows text has crates/<crate>/i18n/ holding <domain>.pot
+# (written from its Message enum), the translators' <locale>.po files, and packs/<locale>.json.
+
+[tasks."i18n:extract"]
+description = "Writes each crate's i18n/<domain>.pot from its Message enum"
+dir = "{{config_root}}"
+# One `cargo run --example i18n_extract` line per crate with a Message enum (Plans 05 to 09 add theirs)
+run = ["cargo run -q -p levi-ui --example i18n_extract"]
+
+[tasks."i18n:check"]
+description = "Fails when a crate's .pot is out of date with its Message enum"
+dir = "{{config_root}}"
+# One `cargo run --example i18n_extract -- --check` line per crate with a Message enum
+run = ["cargo run -q -p levi-ui --example i18n_extract -- --check"]
+
+[tasks."i18n:build"]
+description = "Compiles each crate's i18n/<locale>.po into i18n/packs/<locale>.json; a locale under 90 % coverage is not shipped"
+dir = "{{config_root}}"
+shell = "bash -c"
+run = 'for dir in crates/*/i18n; do [ -d "$dir" ] || continue; cargo run -q -p levi-i18n-tool -- build "$dir" "$dir/packs" || exit 1; done'
+
+[tasks."i18n:pseudo"]
+description = "Writes the en_XA pseudo-locale pack of each crate's .pot into i18n/packs/en_XA.json"
+dir = "{{config_root}}"
+shell = "bash -c"
+run = 'for pot in crates/*/i18n/*.pot; do [ -f "$pot" ] || continue; cargo run -q -p levi-i18n-tool -- pseudo "$pot" "$(dirname "$pot")/packs/en_XA.json" || exit 1; done'
+
+[tasks."i18n:report"]
+description = "Prints the translation coverage of each crate's locales against its .pot"
+dir = "{{config_root}}"
+shell = "bash -c"
+run = 'for pot in crates/*/i18n/*.pot; do [ -f "$pot" ] || continue; echo "## $pot"; cargo run -q -p levi-i18n-tool -- report "$pot" "$(dirname "$pot")" || exit 1; done'
+
+[tasks."design:generate"]
+description = "Regenerates the levi-ui and studio-ui token types from crates/levi-ui/design/tokens.json"
+dir = "{{config_root}}"
+run = "cargo run -q -p levi-ui-gen -- --tokens crates/levi-ui/design/tokens.json --ownership crates/levi-ui/design/ownership.json --levi-out crates/levi-ui/src/tokens/generated --studio-out crates/studio-ui/src/tokens/generated"
+
+[tasks."design:check"]
+description = "Fails if the generated token types differ from what tokens.json produces"
+dir = "{{config_root}}"
+run = "cargo run -q -p levi-ui-gen -- --tokens crates/levi-ui/design/tokens.json --ownership crates/levi-ui/design/ownership.json --levi-out crates/levi-ui/src/tokens/generated --studio-out crates/studio-ui/src/tokens/generated --check"
 
 [tools]
 "cargo:cbindgen" = "0.29.2"

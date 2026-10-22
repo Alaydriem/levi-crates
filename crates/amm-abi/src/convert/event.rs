@@ -65,6 +65,9 @@ impl From<ModEvent> for AmmEvent {
             ModEvent::ScreenshotWritten { sequence, ok } => {
                 Self { code: sequence, phase: u8::from(ok), ..Self::bare(AmmEventKind::ScreenshotWritten) }
             }
+            ModEvent::MenuEntryClicked { entry } => {
+                Self { code: u32::from(entry), ..Self::bare(AmmEventKind::MenuEntryClicked) }
+            }
         }
     }
 }
@@ -113,6 +116,9 @@ impl TryFrom<&AmmEvent> for ModEvent {
             AmmEventKind::ScreenshotTaken => ModEvent::ScreenshotTaken { sequence: value.code, ok: value.phase != 0 },
             AmmEventKind::ScreenshotWritten => {
                 ModEvent::ScreenshotWritten { sequence: value.code, ok: value.phase != 0 }
+            }
+            AmmEventKind::MenuEntryClicked => {
+                ModEvent::MenuEntryClicked { entry: u16::try_from(value.code).map_err(|_| AmmStatus::InvalidArgument)? }
             }
         })
     }

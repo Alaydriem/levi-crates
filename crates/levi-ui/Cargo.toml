@@ -1,0 +1,38 @@
+[package]
+name = "levi-ui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[[example]]
+# not "gallery": studio-ui has an example of that name, and both would link target/*/examples/gallery.exe
+name = "widget_gallery"
+path = "examples/gallery/main.rs"
+required-features = ["gallery"]
+
+[lints]
+workspace = true
+
+[dependencies]
+curia.workspace = true
+egui.workspace = true
+levi-i18n.workspace = true
+
+[features]
+# The live widget sheets: one gallery page per Paper sheet, for the gallery example and the snapshot tests
+gallery = []
+
+[dev-dependencies]
+eframe.workspace = true
+egui_kittest = { workspace = true, features = ["snapshot", "wgpu"] }
+levi-ui = { path = ".", features = ["gallery"] }
+levi-i18n-tool = { path = "../levi-i18n-tool" }
+levi-ui-gen = { path = "../levi-ui-gen" }
+serde_json.workspace = true
+tempfile.workspace = true

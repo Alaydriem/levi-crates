@@ -1,0 +1,136 @@
+use egui::{Color32, Rect, Sense, Shape, pos2, vec2};
+use levi_ui::icon::Icon;
+use levi_ui::state::{DisabledReason, InteractionState};
+use levi_ui::tokens::{ColorToken, OpacityToken, color, opacity};
+use levi_ui::widget::{Menu, MenuItem, MenuLeading, MenuTone, MenuTrailing, Submenu};
+
+use crate::support::{ClickProbe, PaintCapture, Sample, ShapeText};
+
+struct ItemPaint;
+
+impl ItemPaint {
+    const RECT: Rect = Rect::from_min_max(pos2(20.0, 20.0), pos2(270.0, 48.0));
+
+    fn shapes(item: &MenuItem, state: InteractionState) -> Vec<Shape> {
+        PaintCapture::shapes(|painter| item.paint(painter, Self::RECT, state))
+    }
+
+    fn colour_of(shapes: &[Shape], text: &str) -> Option<Color32> {
+        shapes.iter().find_map(|s| match s {
+            Shape::Text(t) if t.galley.text() == text => Some(t.galley.job.sections[0].format.color),
+            _ => None,
+        })
+    }
+}
+
+#[test]
+fn item_ladder_and_danger_colours() {
+    let item = MenuItem::new(Sample::text("Rename scene…")).leading(MenuLeading::Icon(Icon::Rename));
+    for (state, fill) in
+        [(InteractionState::Hover, color::BgHover::VALUE), (InteractionState::Pressed, color::BgActive::VALUE)]
+    {
+        let shapes = ItemPaint::shapes(&item, state);
+        assert!(PaintCapture::rects(&shapes).iter().any(|r| r.rect == ItemPaint::RECT && r.fill == fill), "{state:?}");
+    }
+    let danger =
+        MenuItem::new(Sample::text("Delete scene…")).leading(MenuLeading::Icon(Icon::Delete)).tone(MenuTone::Danger);
+    let shapes = ItemPaint::shapes(&danger, InteractionState::Hover);
+    assert_eq!(ItemPaint::colour_of(&shapes, "Delete scene…"), Some(color::Danger::VALUE));
+    assert_eq!(ItemPaint::colour_of(&shapes, "\u{E74D}"), Some(color::Danger::VALUE));
+    assert!(PaintCapture::rects(&shapes).iter().any(|r| r.fill == color::BgHover::VALUE));
+}
+
+#[test]
+fn disabled_reason_stays_full_opacity() {
+    let item = MenuItem::new(Sample::text("Copy key"))
+        .leading(MenuLeading::Icon(Icon::Copy))
+        .enabled(false, DisabledReason::new(Sample::text("Select a key first")));
+    let rect = Rect::from_min_size(pos2(20.0, 20.0), vec2(250.0, MenuItem::REASON_HEIGHT));
+    let shapes = PaintCapture::shapes(|painter| item.paint(painter, rect, InteractionState::Disabled));
+    // a painter's opacity reaches text through the galley's vertex colours, not its format colour
+    let alpha = |text: &str| {
+        shapes.iter().find_map(|s| match s {
+            Shape::Text(t) if t.galley.text() == text => {
+                let vertex = t.galley.rows.iter().find_map(|r| r.row.visuals.mesh.vertices.first())?;
+                Some((vertex.color.a(), t.galley.job.sections[0].format.color.a()))
+            }
+            _ => None,
+        })
+    };
+    let Some((label, label_source)) = alpha("Copy key") else { panic!("no Copy key label") };
+    let muted = (f32::from(label_source) * <opacity::Muted as OpacityToken>::VALUE).round();
+    assert!((f32::from(label) - muted).abs() <= 1.0, "label alpha {label}, want {muted}");
+    let Some((reason, reason_source)) = alpha("Select a key first") else { panic!("no reason line") };
+    assert_eq!(reason, reason_source, "the reason line was muted");
+    assert_eq!(ItemPaint::colour_of(&shapes, "Select a key first"), Some(color::TextFaint::VALUE));
+}
+
+#[test]
+fn shortcut_submenu_and_check_trail() {
+    let shortcut = MenuItem::new(Sample::text("Duplicate")).trailing(MenuTrailing::Shortcut(Sample::text("Ctrl+D")));
+    let shapes = ItemPaint::shapes(&shortcut, InteractionState::Rest);
+    assert_eq!(ItemPaint::colour_of(&shapes, "Ctrl+D"), Some(color::TextFaint::VALUE));
+    let submenu = MenuItem::new(Sample::text("Colour")).trailing(MenuTrailing::Submenu);
+    assert!(ShapeText::contains(&ItemPaint::shapes(&submenu, InteractionState::Rest), "\u{E76C}"));
+    let checked = MenuItem::new(Sample::text("Snap to keys")).leading(MenuLeading::Check);
+    let shapes = ItemPaint::shapes(&checked, InteractionState::Rest);
+    assert_eq!(ItemPaint::colour_of(&shapes, "\u{E73E}"), Some(color::AccentHover::VALUE));
+}
+
+#[test]
+fn swatch_rows_paint_a_swatch_dot() {
+    let lime = Color32::from_rgb(0xB5, 0xE8, 0x53);
+    let item = MenuItem::new(Sample::text("Lime")).leading(MenuLeading::Swatch(lime)).trailing(MenuTrailing::Check);
+    let shapes = ItemPaint::shapes(&item, InteractionState::Rest);
+    let dot = shapes.iter().find_map(|s| if let Shape::Circle(c) = s { Some((c.radius, c.fill)) } else { None });
+    assert_eq!(dot, Some((5.0, lime)));
+}
+
+#[test]
+fn leaf_click_closes_menu_and_disabled_item_does_not_click() {
+    let mut harness = ClickProbe::harness_with((0_usize, 0_usize), |ui, (renames, copies)| {
+        let target = ui.allocate_response(vec2(200.0, 40.0), Sense::click());
+        Menu::show(&target, Some(Sample::text("Arrival")), |ui| {
+            if MenuItem::new(Sample::text("Rename scene…")).show(ui).clicked() {
+                *renames += 1;
+            }
+            let reason = DisabledReason::new(Sample::text("Select a key first"));
+            if MenuItem::new(Sample::text("Copy key")).enabled(false, reason).show(ui).clicked() {
+                *copies += 1;
+            }
+        });
+        target
+    });
+    let target = harness.state().rect;
+    ClickProbe::secondary_click_at(&mut harness, target.center());
+    assert!(ClickProbe::texts(&harness).contains(&"Arrival".to_owned()), "the menu did not open");
+    let copy = ClickProbe::text_rect(&harness, "Copy key").map(|r| r.center());
+    let Some(copy) = copy else { panic!("no Copy key row") };
+    ClickProbe::click_at(&mut harness, copy);
+    assert_eq!(harness.state().value.1, 0, "a disabled item clicked");
+    let rename = ClickProbe::text_rect(&harness, "Rename scene…").map(|r| r.center());
+    let Some(rename) = rename else { panic!("the menu closed on a disabled item") };
+    ClickProbe::click_at(&mut harness, rename);
+    assert_eq!(harness.state().value.0, 1);
+    assert!(!ClickProbe::texts(&harness).contains(&"Arrival".to_owned()), "the menu did not close");
+}
+
+#[test]
+fn submenu_opens_to_the_right() {
+    let mut harness = ClickProbe::harness_with((), |ui, _| {
+        let target = ui.allocate_response(vec2(200.0, 40.0), Sense::click());
+        Menu::show(&target, None, |ui| {
+            Submenu::show(ui, Sample::text("Colour"), |ui| {
+                MenuItem::new(Sample::text("Lime")).show(ui);
+            });
+        });
+        target
+    });
+    let target = harness.state().rect;
+    ClickProbe::secondary_click_at(&mut harness, target.center());
+    let Some(colour) = ClickProbe::text_rect(&harness, "Colour") else { panic!("no Colour row") };
+    harness.hover_at(colour.center());
+    harness.run();
+    let Some(lime) = ClickProbe::text_rect(&harness, "Lime") else { panic!("the submenu did not open") };
+    assert!(lime.left() > colour.right(), "{lime:?} is not right of {colour:?}");
+}

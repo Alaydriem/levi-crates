@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use amm_abi::types::AmmStatus;
+use amm_abi::types::{AmmApi, AmmStatus};
 use amm_client::test_support::{FakeTable, SettingCall};
 use amm_core::errors::LinkError;
 use amm_core::structs::capture::ScreenshotLayers;
@@ -8,6 +8,7 @@ use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::{KeybindPhase, ModEvent};
 use amm_core::structs::lease::AcquireOutcome;
 use amm_core::structs::manager::TextureGrant;
+use amm_core::structs::menu::{MenuEntryId, MenuScreens};
 use amm_core::structs::registry::ModIndex;
 
 #[test]
@@ -143,4 +144,33 @@ fn texture_budget_answers_the_grant_set() {
     FakeTable::set_texture_grant(grant);
 
     assert_eq!(link.texture_budget(), Ok(grant));
+}
+
+#[test]
+fn register_menu_entry_passes_label_mark_and_screens_and_returns_the_id() {
+    let link = FakeTable::link_without_frame();
+    FakeTable::set_menu_entry_id(4);
+
+    let id = link.register_menu_entry("Dejavu", "DV", MenuScreens::START);
+
+    assert_eq!(id, Ok(Some(MenuEntryId(4))));
+    assert_eq!(FakeTable::with(|state| state.menu_entries.clone()), [("Dejavu".to_owned(), "DV".to_owned(), 1)]);
+}
+
+#[test]
+fn client_reports_missing_slot_as_none() {
+    let api = AmmApi { register_menu_entry: None, ..FakeTable::api() };
+    let link = FakeTable::link_without_frame_on(api);
+
+    assert_eq!(link.register_menu_entry("Dejavu", "DV", MenuScreens::START), Ok(None));
+}
+
+#[test]
+fn a_menu_entry_click_reaches_the_link() {
+    let mut link = FakeTable::link_without_frame();
+    FakeTable::push_event(ModEvent::MenuEntryClicked { entry: 1 });
+
+    let events: Vec<ModEvent> = link.events().collect();
+
+    assert_eq!(events, [ModEvent::MenuEntryClicked { entry: 1 }]);
 }

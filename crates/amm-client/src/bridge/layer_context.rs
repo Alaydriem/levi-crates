@@ -55,7 +55,15 @@ impl LayerContext {
         self.text_focused = text_focused;
         Self::copy(clipboard, &mut output.platform_output);
         let primitives = self.ctx.tessellate(std::mem::take(&mut output.shapes), ppp);
-        MeshFlattener::flatten_layer(&primitives, &output.textures_delta, ppp, self.layer, &mut self.mesh);
+        let textures = self.ctx.tex_manager();
+        MeshFlattener::flatten_layer(
+            &primitives,
+            &output.textures_delta,
+            &textures.read(),
+            ppp,
+            self.layer,
+            &mut self.mesh,
+        );
         output.textures_delta.clear();
         self.fill(out, reply, ppp, text_focused);
     }

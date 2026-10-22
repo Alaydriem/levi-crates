@@ -23,4 +23,6 @@ pub enum AmmEventKind {
     ScreenshotTaken,
     /// The file of capture `code` (its sequence) is in place (`phase` 1) or the encode or write failed (`phase` 0).
     ScreenshotWritten,
+    /// Since 1.4. The person clicked the mod's menu entry whose id is in `code`.
+    MenuEntryClicked,
 }

@@ -1,6 +1,6 @@
-use egui::epaint::textures::TexturesDelta;
+use egui::epaint::textures::{TextureManager, TexturesDelta};
 use egui::epaint::{ImageData, Primitive};
-use egui::{ClippedPrimitive, TextureId};
+use egui::{ClippedPrimitive, TextureFilter, TextureId, TextureOptions};
 
 use crate::structs::frame::LayerKind;
 use crate::structs::mesh::{DrawCmd, MeshBuffers, SamplerKind, TextureDelta, Vertex};
@@ -13,6 +13,9 @@ use crate::structs::mesh::{DrawCmd, MeshBuffers, SamplerKind, TextureDelta, Vert
 /// - bit 62, `OVERLAY_TEXTURE_BIT`, marks an egui-managed id of the Overlay layer's context. A mod has one egui
 ///   context per layer and each context numbers its managed textures from 0, so this bit keeps the two sets apart
 ///   in the host's per-mod texture map. Hud ids leave the bit clear.
+///
+/// A managed texture is uploaded and drawn with the sampler of its own `TextureOptions::magnification`, which
+/// `textures`, the manager of the context that made the pass, holds.
 pub struct MeshFlattener;
 
 impl MeshFlattener {
@@ -23,8 +26,14 @@ impl MeshFlattener {
 
     /// Flattens one pass of a context that is the only one of its owner, with Hud ids. `out` is cleared first and
     /// keeps its capacity.
-    pub fn flatten(primitives: &[ClippedPrimitive], delta: &TexturesDelta, ppp: f32, out: &mut MeshBuffers) {
-        Self::flatten_layer(primitives, delta, ppp, LayerKind::Hud, out);
+    pub fn flatten(
+        primitives: &[ClippedPrimitive],
+        delta: &TexturesDelta,
+        textures: &TextureManager,
+        ppp: f32,
+        out: &mut MeshBuffers,
+    ) {
+        Self::flatten_layer(primitives, delta, textures, ppp, LayerKind::Hud, out);
     }
 
     /// Flattens one pass of the context of `layer`. Managed ids carry the layer bit. `out` is cleared first and
@@ -32,6 +41,7 @@ impl MeshFlattener {
     pub fn flatten_layer(
         primitives: &[ClippedPrimitive],
         delta: &TexturesDelta,
+        textures: &TextureManager,
         ppp: f32,
         layer: LayerKind,
         out: &mut MeshBuffers,
@@ -39,7 +49,7 @@ impl MeshFlattener {
         let tag = Self::managed_tag(layer);
         out.clear();
         Self::textures(delta, tag, out);
-        Self::meshes(primitives, ppp, tag, out);
+        Self::meshes(primitives, textures, ppp, tag, out);
     }
 
     /// The egui user texture id for a host texture id and sampler.
@@ -68,7 +78,7 @@ impl MeshFlattener {
                 let (x, y) = image.pos.map_or((0, 0), |[x, y]| (x as u32, y as u32));
                 out.deltas.push(TextureDelta {
                     id: texture | tag,
-                    sampler: SamplerKind::Linear,
+                    sampler: Self::sampler(image.options),
                     full: image.pos.is_none(),
                     x,
                     y,
@@ -85,7 +95,7 @@ impl MeshFlattener {
         }));
     }
 
-    fn meshes(primitives: &[ClippedPrimitive], ppp: f32, tag: u64, out: &mut MeshBuffers) {
+    fn meshes(primitives: &[ClippedPrimitive], textures: &TextureManager, ppp: f32, tag: u64, out: &mut MeshBuffers) {
         for primitive in primitives {
             let Primitive::Mesh(mesh) = &primitive.primitive else { continue };
             if mesh.indices.is_empty() {
@@ -97,7 +107,11 @@ impl MeshFlattener {
                 continue;
             }
             let (texture, shader, sampler) = match mesh.texture_id {
-                TextureId::Managed(id) => (id | tag, DrawCmd::SHADER_EGUI, SamplerKind::Linear),
+                TextureId::Managed(id) => {
+                    let sampler =
+                        textures.meta(mesh.texture_id).map_or(SamplerKind::Linear, |m| Self::sampler(m.options));
+                    (id | tag, DrawCmd::SHADER_EGUI, sampler)
+                }
                 TextureId::User(raw) => {
                     let sampler = if raw & Self::LINEAR_BIT != 0 { SamplerKind::Linear } else { SamplerKind::Nearest };
                     ((raw & Self::USER_ID_MASK) | DrawCmd::USER_TEXTURE_FLAG, DrawCmd::SHADER_USER, sampler)
@@ -118,6 +132,13 @@ impl MeshFlattener {
                 uv: [v.uv.x, v.uv.y],
                 color: v.color.to_array(),
             }));
+        }
+    }
+
+    fn sampler(options: TextureOptions) -> SamplerKind {
+        match options.magnification {
+            TextureFilter::Nearest => SamplerKind::Nearest,
+            TextureFilter::Linear => SamplerKind::Linear,
         }
     }
 }

@@ -6,6 +6,7 @@ pub mod frame;
 pub mod input;
 pub mod lease;
 pub mod manager;
+pub mod menu;
 pub mod mesh;
 pub mod registry;
 pub mod settings;

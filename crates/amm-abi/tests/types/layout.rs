@@ -17,7 +17,8 @@ fn api_table_field_offsets_are_stable() {
     assert_eq!(offset_of!(AmmApi, request_screenshot), 16 + 11 * 8);
     assert_eq!(offset_of!(AmmApi, texture_budget), 16 + 13 * 8);
     assert_eq!(offset_of!(AmmApi, request_screenshot_layers), 16 + 14 * 8);
-    assert_eq!(size_of::<AmmApi>(), 16 + 15 * 8);
+    assert_eq!(offset_of!(AmmApi, register_menu_entry), 16 + 15 * 8);
+    assert_eq!(size_of::<AmmApi>(), 16 + 16 * 8);
 }
 
 #[test]

@@ -4,7 +4,6 @@ use studio_ui::theme::{Icon, Metrics, StudioPalette, Typeface};
 use studio_ui::widgets::Draw;
 
 use crate::model::{PanelModel, ToastText};
-use crate::views::MenuButtonView;
 
 /// The toast stack in the bottom-right corner, newest at the bottom, inside a 24 px screen margin.
 /// While the menu button shows, the stack sits above it, so no toast covers the button. While the
@@ -22,7 +21,7 @@ impl ToastsView {
     // the progress track and the space above it
     const BOTTOM: f32 = 16.0;
 
-    pub fn show(ctx: &Context, screen: Rect, panel: Option<Rect>, model: &PanelModel) {
+    pub fn show(ctx: &Context, screen: Rect, panel: Option<Rect>, corner: Option<Rect>, model: &PanelModel) {
         let count = model.toasts().count();
         if count == 0 {
             return;
@@ -30,8 +29,7 @@ impl ToastsView {
         let painter = ctx.layer_painter(LayerId::new(Order::Middle, Id::unique("amm.toasts")));
         let height = Self::height(&painter);
         let stack = count as f32 * (height + Self::GAP) - Self::GAP;
-        let button = model.menu_button_visible().then(|| MenuButtonView::rect(screen));
-        let (right, bottom) = Self::anchor(screen, panel, button, stack);
+        let (right, bottom) = Self::anchor(screen, panel, corner, stack);
         let mut y = bottom;
         let top_limit = screen.top() + Self::MARGIN;
         let toasts: Vec<&Toast> = model.toasts().collect();

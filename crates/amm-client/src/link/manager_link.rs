@@ -8,6 +8,7 @@ use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::ModEvent;
 use amm_core::structs::lease::AcquireOutcome;
 use amm_core::structs::manager::TextureGrant;
+use amm_core::structs::menu::{MenuEntryId, MenuScreens};
 use curia::{Dispatcher, InstallError, Level, Logger, TracingBridge};
 use serde::de::DeserializeOwned;
 use tracing_subscriber::layer::SubscriberExt;
@@ -291,6 +292,36 @@ impl ManagerLink {
         // SAFETY: held_by_other takes plain values; the handle is this link's until drop
         let held = unsafe { held_by_other(self.handle, AmmCapability::from(capability) as u8) };
         held == 1
+    }
+
+    /// Places a button for this mod in the corner row, left of the Mods button, on `screens`. Returns the entry
+    /// id, which `ModEvent::MenuEntryClicked` carries, or `None` on a manager older than ABI 1.4.
+    pub fn register_menu_entry(
+        &self,
+        label: &str,
+        mark: &str,
+        screens: MenuScreens,
+    ) -> Result<Option<MenuEntryId>, LinkError> {
+        let Some(register_menu_entry) = self.table.api().register_menu_entry else {
+            return Ok(None);
+        };
+        let mut id = 0u16;
+        // SAFETY: the label, the mark and the out id live for the call; the handle is this link's until drop
+        let status = unsafe {
+            register_menu_entry(
+                self.handle,
+                label.as_ptr(),
+                label.len(),
+                mark.as_ptr(),
+                mark.len(),
+                screens.bits(),
+                &mut id,
+            )
+        };
+        match status {
+            AmmStatus::Ok => Ok(Some(MenuEntryId(id))),
+            other => Err(LinkError::from(other)),
+        }
     }
 
     /// The texture budget the manager gave this mod. A manager older than ABI 1.2 is `Unsupported`.

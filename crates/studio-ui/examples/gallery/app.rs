@@ -1,6 +1,9 @@
 use egui::{Align2, CentralPanel, Color32, Context, Frame, Margin, Rect, Ui, pos2, vec2};
 use studio_ui::theme::{FontSource, Icon, Metrics, StudioPalette, StudioTheme, Typeface};
-use studio_ui::widgets::{CardFrame, Chip, ChipStyle, Draw, Dropdown, IconButton, Slider, TextButton, Toggle};
+use studio_ui::widgets::{
+    CardFrame, Chip, ChipStyle, ConfirmPopover, CornerButton, Draw, Dropdown, IconButton, NoticeToast, RailIcon,
+    RailTile, RailTimer, RailTimerState, RailTone, Slider, TextButton, Toggle,
+};
 
 use crate::screenshot::ScreenshotJob;
 
@@ -52,6 +55,41 @@ impl GalleryApp {
         ui.label(egui::RichText::new("Help text").font(Typeface::help()).color(StudioPalette::TEXT_DIM));
         ui.label(egui::RichText::new("Mono text ctrl+shift+m").font(Typeface::mono_text()));
         ui.label(egui::RichText::new("Semibold text").font(Typeface::body_strong()));
+        ui.add_space(Metrics::GAP_L);
+        Self::capture(ui);
+    }
+
+    // the capture rail tiles, the timer, the corner buttons, the confirm popover and the notice toast
+    fn capture(ui: &mut Ui) {
+        Draw::caps(ui.painter(), ui.cursor().min, Align2::LEFT_TOP, "Capture", StudioPalette::TEXT_DIM);
+        ui.add_space(20.0);
+        ui.horizontal(|ui| {
+            RailTile::show(ui, RailIcon::RecordDot, "Record", RailTone::Normal, true);
+            RailTile::show(ui, RailIcon::Glyph(Icon::PAUSE), "Pause", RailTone::Normal, true);
+            RailTile::show(ui, RailIcon::Glyph(Icon::PLAY), "Resume", RailTone::Active, true);
+            RailTile::show(ui, RailIcon::Glyph(Icon::CHECK), "Finish", RailTone::Normal, true);
+            RailTile::show(ui, RailIcon::Glyph(Icon::DELETE), "Discard", RailTone::Danger, true);
+            RailTile::show(ui, RailIcon::Glyph(Icon::PAUSE), "Pause", RailTone::Normal, false);
+        });
+        ui.add_space(Metrics::GAP_S);
+        ui.horizontal(|ui| {
+            RailTimer::show(ui, RailTimerState::Live, 761_000);
+            RailTimer::show(ui, RailTimerState::Paused, 761_000);
+            ui.add_space(Metrics::GAP_L);
+            CornerButton::labelled(ui, "DV", "Dejavu");
+            CornerButton::icon(ui, Icon::PUZZLE);
+        });
+        ui.add_space(Metrics::GAP_S);
+        ui.horizontal_top(|ui| {
+            ConfirmPopover::show(
+                ui,
+                "Discard this recording?",
+                "12:41 of capture will be deleted. You cannot undo this.",
+                "Keep recording",
+                "Discard",
+            );
+            NoticeToast::show(ui, "Saved to Library", "Nether trip  ·  12:41");
+        });
     }
 
     fn chips(&self, ui: &mut Ui) {

@@ -2,6 +2,10 @@
 resolver = "3"
 members = [
   "crates/studio-ui",
+  "crates/levi-ui",
+  "crates/levi-ui-gen",
+  "crates/levi-i18n",
+  "crates/levi-i18n-tool",
   "crates/amm-core",
   "crates/amm-abi",
   "crates/amm-store",
@@ -23,6 +27,7 @@ publish = false
 egui = { version = "=0.37.0", default-features = false, features = ["default_fonts"] }
 eframe = { version = "=0.37.0", default-features = false, features = ["default_fonts", "glow"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
+egui_kittest = { version = "=0.37.0" }
 png = "0.18.1"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
@@ -41,6 +46,13 @@ tempfile = "3.27.0"
 criterion = "0.5"
 windows-sys = { version = "0.61.2", features = ["Win32_System_LibraryLoader"] }
 studio-ui = { path = "crates/studio-ui" }
+levi-ui = { path = "crates/levi-ui" }
+levi-i18n = { path = "crates/levi-i18n" }
+icu_plurals = "2.2"
+icu_locale_core = "2.2"
+# `sync` makes ICU data payloads use Arc, so a Localizer can live in egui's context data
+icu_provider = { version = "2.3", features = ["sync"] }
+polib = "0.3"
 amm-core = { path = "crates/amm-core" }
 amm-abi = { path = "crates/amm-abi" }
 amm-store = { path = "crates/amm-store" }

@@ -22,6 +22,7 @@ impl EventName {
             ModEvent::Wheel { .. } => "wheel",
             ModEvent::ScreenshotTaken { .. } => "screenshot_taken",
             ModEvent::ScreenshotWritten { .. } => "screenshot_written",
+            ModEvent::MenuEntryClicked { .. } => "menu_entry_clicked",
         }
     }
 }

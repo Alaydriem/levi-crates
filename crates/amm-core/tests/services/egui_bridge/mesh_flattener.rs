@@ -2,7 +2,7 @@ use amm_core::services::egui_bridge::MeshFlattener;
 use amm_core::structs::frame::LayerKind;
 use amm_core::structs::mesh::{DrawCmd, MeshBuffers, SamplerKind};
 use egui::epaint::Vertex as EguiVertex;
-use egui::epaint::textures::TexturesDelta;
+use egui::epaint::textures::{TextureManager, TexturesDelta};
 use egui::epaint::{ClippedPrimitive, Color32, ColorImage, ImageData, ImageDelta, Mesh, Primitive};
 use egui::{Rect, TextureId, TextureOptions, pos2};
 
@@ -25,7 +25,7 @@ fn flattened_vertices_are_in_physical_pixels() {
     let mut out = MeshBuffers::new();
     let primitives = [quad(TextureId::Managed(0), big_clip(), 10.0)];
 
-    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), 1.25, &mut out);
+    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), &TextureManager::default(), 1.25, &mut out);
 
     assert_eq!(out.vertices[0].pos, [12.5, 12.5]);
     assert_eq!(out.cmds[0].clip, [0.0, 0.0, 125.0, 125.0]);
@@ -38,7 +38,7 @@ fn empty_clip_rects_are_skipped() {
     let empty = Rect::from_min_max(pos2(5.0, 5.0), pos2(5.0, 20.0));
     let primitives = [quad(TextureId::Managed(0), empty, 10.0), quad(TextureId::Managed(0), big_clip(), 10.0)];
 
-    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), 1.0, &mut out);
+    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), &TextureManager::default(), 1.0, &mut out);
 
     assert_eq!(out.cmds.len(), 1);
     assert_eq!(out.vertex_count(), 4);
@@ -49,7 +49,7 @@ fn second_mesh_indices_are_rebased_and_offsets_chain() {
     let mut out = MeshBuffers::new();
     let primitives = [quad(TextureId::Managed(0), big_clip(), 1.0), quad(TextureId::Managed(0), big_clip(), 2.0)];
 
-    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), 1.0, &mut out);
+    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), &TextureManager::default(), 1.0, &mut out);
 
     assert_eq!(out.cmds[1].index_offset, 6);
     assert_eq!(&out.indices[6..9], &[4, 5, 6]);
@@ -63,7 +63,7 @@ fn user_texture_keeps_sampler_bits() {
         quad(MeshFlattener::user_texture(7, SamplerKind::Linear), big_clip(), 1.0),
     ];
 
-    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), 1.0, &mut out);
+    MeshFlattener::flatten(&primitives, &TexturesDelta::default(), &TextureManager::default(), 1.0, &mut out);
 
     assert_eq!(out.cmds[0].sampler, SamplerKind::Nearest);
     assert_eq!(out.cmds[1].sampler, SamplerKind::Linear);
@@ -84,7 +84,7 @@ fn texture_delta_bytes_are_packed_rgba8_with_offsets() {
     delta.set.insert(TextureId::Managed(1), images.into_iter().collect());
     delta.free.insert(TextureId::Managed(5));
 
-    MeshFlattener::flatten(&[], &delta, 1.0, &mut out);
+    MeshFlattener::flatten(&[], &delta, &TextureManager::default(), 1.0, &mut out);
 
     assert_eq!(out.deltas.len(), 2);
     assert!(out.deltas[0].full);
@@ -109,14 +109,37 @@ fn overlay_layer_marks_managed_ids_and_keeps_user_ids() {
         quad(MeshFlattener::user_texture(7, SamplerKind::Nearest), big_clip(), 1.0),
     ];
 
-    MeshFlattener::flatten_layer(&primitives, &delta, 1.0, LayerKind::Overlay, &mut out);
+    MeshFlattener::flatten_layer(&primitives, &delta, &TextureManager::default(), 1.0, LayerKind::Overlay, &mut out);
 
     let bit = MeshFlattener::OVERLAY_TEXTURE_BIT;
     assert_eq!(out.deltas[0].id, 1 | bit);
     assert_eq!(out.freed, vec![5 | bit]);
     assert_eq!(out.cmds[0].texture, 1 | bit);
     assert_eq!(out.cmds[1].texture, 7 | DrawCmd::USER_TEXTURE_FLAG, "a user texture is the mod's own, on every layer");
-    MeshFlattener::flatten_layer(&primitives, &delta, 1.0, LayerKind::Hud, &mut out);
+    MeshFlattener::flatten_layer(&primitives, &delta, &TextureManager::default(), 1.0, LayerKind::Hud, &mut out);
     assert_eq!((out.deltas[0].id, out.freed[0], out.cmds[0].texture), (1, 5, 1));
+    delta.clear();
+}
+
+#[test]
+fn managed_texture_draws_and_uploads_with_its_own_magnification_filter() {
+    let mut out = MeshBuffers::new();
+    let mut textures = TextureManager::default();
+    let pixel = || ImageData::Color(ColorImage::new([1, 1], vec![Color32::WHITE]).into());
+    let nearest = textures.alloc("tile".into(), pixel(), TextureOptions::NEAREST);
+    let linear = textures.alloc("atlas".into(), pixel(), TextureOptions::LINEAR);
+    let mut delta = textures.take_delta();
+    let primitives = [quad(nearest, big_clip(), 1.0), quad(linear, big_clip(), 1.0)];
+
+    MeshFlattener::flatten(&primitives, &delta, &textures, 1.0, &mut out);
+
+    assert_eq!(out.cmds[0].sampler, SamplerKind::Nearest);
+    assert_eq!(out.cmds[1].sampler, SamplerKind::Linear);
+    let sampler_of = |id: TextureId| {
+        let TextureId::Managed(raw) = id else { unreachable!() };
+        out.deltas.iter().find(|d| d.id == raw).map(|d| d.sampler)
+    };
+    assert_eq!(sampler_of(nearest), Some(SamplerKind::Nearest));
+    assert_eq!(sampler_of(linear), Some(SamplerKind::Linear));
     delta.clear();
 }

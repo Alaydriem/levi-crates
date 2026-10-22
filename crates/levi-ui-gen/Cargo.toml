@@ -1,0 +1,22 @@
+[package]
+name = "levi-ui-gen"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+autotests = false
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

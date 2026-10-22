@@ -41,6 +41,10 @@ impl PanelState {
         self.menu_button.set_screen(screen);
     }
 
+    pub fn menu_screen(&self) -> MenuScreen {
+        self.menu_button.screen()
+    }
+
     pub fn menu_button_allowed(&self) -> bool {
         self.menu_button.allowed()
     }

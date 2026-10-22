@@ -54,11 +54,15 @@ pub enum ModEvent {
         sequence: u32,
         ok: bool,
     },
+    /// The person clicked the mod's menu entry `entry` in the corner row.
+    MenuEntryClicked {
+        entry: u16,
+    },
 }
 
 impl ModEvent {
     /// True for events that a full queue must keep: key-ups, keybind releases, button-ups (so nothing stays
-    /// down in the mod) and the lease, enable, settings and screenshot events.
+    /// down in the mod) and the lease, enable, settings, screenshot and menu entry events.
     pub fn is_protected(&self) -> bool {
         matches!(
             self,
@@ -76,6 +80,7 @@ impl ModEvent {
                 | ModEvent::WorldReloadApply
                 | ModEvent::ScreenshotTaken { .. }
                 | ModEvent::ScreenshotWritten { .. }
+                | ModEvent::MenuEntryClicked { .. }
         )
     }
 }
