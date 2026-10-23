@@ -1,3 +1,4 @@
+mod key;
 mod snap_magnet;
 mod spinner;
 mod swatch_dot;

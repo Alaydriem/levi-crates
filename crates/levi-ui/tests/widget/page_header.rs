@@ -5,7 +5,7 @@ use levi_ui::font::FontSource;
 use levi_ui::icon::Icon;
 use levi_ui::theme::Theme;
 use levi_ui::tokens::{ColorToken, color};
-use levi_ui::widget::{IconButton, MetaSeparator, PageHeader, PageHeaderLead};
+use levi_ui::widget::{ChipTone, IconButton, MetaSeparator, PageHeader, PageHeaderLead};
 
 use crate::support::{FlowProbe, PaintCapture, Sample, ShapeText};
 
@@ -120,4 +120,16 @@ fn trailing_does_not_pull_the_next_widget_up() {
             .show(ui);
     });
     FlowProbe::assert_below(&log);
+}
+
+#[test]
+fn height_is_the_height_it_takes() {
+    let harness = HeaderProbe::harness(640.0, "Freecam", &["freecam", "v0.1.0"]);
+    let lead = PageHeaderLead::Avatar(UserText::from_model("Freecam".to_owned()));
+    let header = PageHeader::new(lead, Sample::text("Freecam")).meta(vec![Sample::text("freecam")]);
+    let panel = PageHeader::new(PageHeaderLead::Tile(Icon::Apps, ChipTone::Accent), Sample::text("Mod Manager"))
+        .eyebrow(Sample::text("ALAYDRIEM"));
+
+    assert_eq!(header.height(), harness.state().header.height());
+    assert!(panel.height() < header.height(), "the panel form's smaller tile makes a lower bar");
 }

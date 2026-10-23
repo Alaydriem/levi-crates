@@ -58,11 +58,14 @@ pub enum ModEvent {
     MenuEntryClicked {
         entry: u16,
     },
+    /// The person picked another language in the manager. Only a mod that has read the language code gets it;
+    /// the mod reads the code again.
+    LocaleChanged,
 }
 
 impl ModEvent {
     /// True for events that a full queue must keep: key-ups, keybind releases, button-ups (so nothing stays
-    /// down in the mod) and the lease, enable, settings, screenshot and menu entry events.
+    /// down in the mod) and the lease, enable, settings, screenshot, menu entry and language events.
     pub fn is_protected(&self) -> bool {
         matches!(
             self,
@@ -81,6 +84,7 @@ impl ModEvent {
                 | ModEvent::ScreenshotTaken { .. }
                 | ModEvent::ScreenshotWritten { .. }
                 | ModEvent::MenuEntryClicked { .. }
+                | ModEvent::LocaleChanged
         )
     }
 }

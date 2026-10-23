@@ -183,6 +183,7 @@ impl<'a> DragField<'a> {
             DragUnit::None => None,
             DragUnit::Degrees => Some(("°".to_owned(), 0.0)),
             DragUnit::Text(word) => Some((UiText::resolve(painter.ctx(), word), <spacing::Xs as SpacingToken>::VALUE)),
+            DragUnit::Joined(unit) => Some((UiText::resolve(painter.ctx(), unit), 0.0)),
         };
         let mut right = rect.right() - Self::padding();
         if let Some((unit, gap)) = unit {

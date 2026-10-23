@@ -12,6 +12,21 @@ pub enum LocaleSetting {
 impl LocaleSetting {
     pub const PSEUDO_LOCALE: &'static str = "en_XA";
 
+    /// The setting for a language code as the mod manager hands it over: empty for English,
+    /// `en_XA` for the pseudo-locale, else a locale id. Spaces around the code are dropped.
+    pub fn from_code(code: &str) -> Self {
+        match code.trim() {
+            "" => Self::English,
+            Self::PSEUDO_LOCALE => Self::Pseudo,
+            locale => Self::Locale(locale.to_owned()),
+        }
+    }
+
+    /// The language code for this setting, as `from_code` reads it.
+    pub fn code(&self) -> &str {
+        self.requested().unwrap_or("")
+    }
+
     /// The locale id to look for, or `None` for English.
     pub fn requested(&self) -> Option<&str> {
         match self {

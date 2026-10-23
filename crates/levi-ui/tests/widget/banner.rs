@@ -107,6 +107,24 @@ fn chord_line_has_caps_and_tail() {
 }
 
 #[test]
+fn a_long_chord_line_is_cut_inside_the_banner() {
+    let tail = "is also bound by a mod with a very long name that runs well past the right edge of this banner, \
+                and then some more words, so no screen this narrow can hold it.";
+    let shapes = BannerProbe::shapes(move || {
+        Banner::new(BannerTone::Warning, Sample::text("1 key conflict."))
+            .chord(KeyChord::new(vec![Sample::text("Ctrl"), Sample::text("B")]), Sample::text(tail))
+    });
+    let banner = PaintCapture::rects(&shapes)
+        .into_iter()
+        .find(|r| r.fill == color::WarningSoft::VALUE)
+        .map(|r| r.rect)
+        .unwrap_or_else(|| panic!("no banner fill"));
+
+    let right = PaintCapture::text_rects(&shapes).into_iter().map(|(_, rect)| rect.right()).fold(0.0, f32::max);
+    assert!(right <= banner.right(), "text ends at {right}, past the banner's edge {}", banner.right());
+}
+
+#[test]
 fn action_does_not_pull_the_next_widget_up() {
     let log = FlowProbe::run(|ui| {
         Banner::new(BannerTone::Danger, Sample::text("Light Level did not load"))

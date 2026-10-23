@@ -1,3 +1,4 @@
+//! Old studio-ui theme. Kept until DejaVu (Plan 08) moves to levi-ui; its frame handler installs it.
 pub mod font_loader;
 pub mod font_source;
 pub mod icon;

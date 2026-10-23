@@ -1,8 +1,11 @@
 use amm_core::structs::frame::MenuScreen;
 use amm_ui::model::{PanelController, PanelIntent, PanelModel};
+use amm_ui::runtime::PanelLocale;
 use amm_ui::views::PanelLayout;
 use egui::{Context, Ui, ViewportCommand};
-use studio_ui::theme::{FontSource, StudioTheme};
+use levi_ui::font::FontSource;
+use levi_ui::text::UiLocale;
+use levi_ui::theme::Theme;
 
 use crate::game_backdrop::GameBackdrop;
 use crate::scene::Scene;
@@ -21,8 +24,10 @@ pub struct ShotsApp {
 impl ShotsApp {
     const LEVILAMINA: &str = "1.4.1";
 
-    pub fn new(ctx: &Context, mut scene: Scene, runner: Option<ShotRunner>, first: usize) -> Self {
-        StudioTheme::install(ctx, FontSource::Embedded);
+    /// `locale` is a language code, as the manager stores it: empty for English.
+    pub fn new(ctx: &Context, mut scene: Scene, runner: Option<ShotRunner>, first: usize, locale: &str) -> Self {
+        Theme::install(ctx, FontSource::Embedded);
+        UiLocale::set(ctx, PanelLocale::localizer(locale));
         let shot = first.min(Shot::ALL.len() - 1);
         Self::stage(&mut scene, Shot::ALL[shot]);
         let controller = Shot::ALL[shot].controller(&scene);

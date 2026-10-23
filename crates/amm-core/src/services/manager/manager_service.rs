@@ -64,6 +64,9 @@ pub struct ManagerService {
     cursor: CursorSet,
     panel: PanelState,
     menu: MenuEntries,
+    /// The mods that have read the language code. Only these get `LocaleChanged`: a mod built for an ABI older
+    /// than 1.5 never reads it, and cannot decode that event kind.
+    locale_readers: ModMask,
     replies: LayerReplies,
     captures: CaptureBook,
     mods: Vec<Option<ManagedMod>>,
@@ -102,6 +105,7 @@ impl ManagerService {
             cursor: CursorSet::new(),
             panel: PanelState::new(config.menu_button),
             menu: MenuEntries::new(),
+            locale_readers: ModMask::default(),
             replies: LayerReplies::new(slots),
             captures: CaptureBook::new(),
             mods: (0..slots).map(|_| None).collect(),
@@ -180,6 +184,7 @@ impl ManagerService {
         self.arbiter.release_all(index, &mut self.hub);
         self.captures.forget(index);
         self.menu.forget(index);
+        self.locale_readers.remove(index);
         self.cursor.remove(index);
         self.registry.unregister(index);
         self.router.forget(index);
@@ -425,6 +430,32 @@ impl ManagerService {
         self.write_config(|document| ManagerConfigFile::with_toggle_chord(document, chord));
         self.config.toggle_chord = chord;
         self.publish();
+    }
+
+    /// The language code for every mod, as `config.hcl` holds it: empty for English.
+    pub fn locale(&self) -> &str {
+        &self.config.language
+    }
+
+    /// The language code, read by the mod in `index`. That mod now gets `LocaleChanged` when the code changes.
+    pub fn read_locale(&mut self, index: ModIndex) -> String {
+        if self.registry.get(index).is_some() {
+            self.locale_readers.insert(index);
+        }
+        self.config.language.clone()
+    }
+
+    /// A new language code from the panel. It is written to the manager config as `language` through the merge
+    /// window, and each mod that has read the code gets `LocaleChanged`. The same code again does nothing.
+    pub fn set_locale(&mut self, code: &str) {
+        if self.config.language == code {
+            return;
+        }
+        self.write_config(|document| ManagerConfigFile::with_language(document, code));
+        self.config.language = code.to_owned();
+        for index in self.locale_readers.iter() {
+            self.hub.push(index, ModEvent::LocaleChanged);
+        }
     }
 
     pub fn menu_button_visible(&self) -> bool {

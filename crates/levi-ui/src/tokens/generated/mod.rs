@@ -7,6 +7,7 @@ pub mod font_weight;
 pub mod line_height;
 pub mod opacity;
 pub mod radius;
+pub mod selector;
 pub mod spacing;
 pub mod text_size;
 pub mod tracking;

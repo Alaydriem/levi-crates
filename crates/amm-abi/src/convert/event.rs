@@ -68,6 +68,7 @@ impl From<ModEvent> for AmmEvent {
             ModEvent::MenuEntryClicked { entry } => {
                 Self { code: u32::from(entry), ..Self::bare(AmmEventKind::MenuEntryClicked) }
             }
+            ModEvent::LocaleChanged => Self::bare(AmmEventKind::LocaleChanged),
         }
     }
 }
@@ -120,6 +121,7 @@ impl TryFrom<&AmmEvent> for ModEvent {
             AmmEventKind::MenuEntryClicked => {
                 ModEvent::MenuEntryClicked { entry: u16::try_from(value.code).map_err(|_| AmmStatus::InvalidArgument)? }
             }
+            AmmEventKind::LocaleChanged => ModEvent::LocaleChanged,
         })
     }
 }

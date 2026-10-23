@@ -1,75 +1,101 @@
-use egui::{Align2, Color32, Response, Sense, Ui, Vec2};
+use egui::{Align2, Color32, Painter, Rect, Response, Sense, Ui, Vec2, pos2};
+use levi_ui::draw::{Corner, Draw, TextFit, TextStyle, TypeSize};
+use levi_ui::font::FontFace;
+use levi_ui::state::InteractionState;
+use levi_ui::tokens::rule::{Elevation, FocusRing};
+use levi_ui::tokens::{ColorToken, RadiusToken, SpacingToken, TextSizeToken, color, radius, spacing, text_size};
 
-use crate::theme::{StudioPalette, Typeface};
-use crate::widgets::{Draw, Motion, RailIcon, RailTone};
+use crate::widgets::{RailIcon, RailTone};
 
-// one square tile of the capture rail: an icon over a short label
+/// Paper: Entry Point, `Components · capture rail & corner buttons` (`A89-0`), "RAIL TILE". One square tile of the
+/// capture rail: an icon over a short label on a floating card. Hover, pressed, focus and disabled follow the
+/// levi-ui state model; Resume is the accent tile and Discard the danger one.
 pub struct RailTile;
 
 impl RailTile {
-    pub const SIDE: f32 = 58.0;
-    pub const RADIUS: u8 = 8;
-    pub const ICON: f32 = 16.0;
-    const DOT_RADIUS: f32 = 8.0;
-    const ICON_Y: f32 = 22.0;
-    const LABEL_Y: f32 = 15.0;
-    const DISABLED_ALPHA: f32 = 0.45;
+    /// Paper: the tile is `--spacing-tile-large` square.
+    pub const SIDE: f32 = <spacing::TileLarge as SpacingToken>::VALUE;
+    /// Paper: `--radius-panel`.
+    pub const RADIUS: u8 = <radius::Panel as RadiusToken>::VALUE as u8;
+    /// Paper: the icon is `--text-icon`.
+    pub const ICON: f32 = <text_size::Icon as TextSizeToken>::VALUE;
+    // Paper: the record dot is 20 across; the icon and label are 8 apart
+    const DOT: f32 = 20.0;
+    const GAP: f32 = 8.0;
+    const LABEL: TextStyle = TextStyle::new(TypeSize::Help, FontFace::Semibold);
 
     pub fn show(ui: &mut Ui, icon: RailIcon, label: &str, tone: RailTone, enabled: bool) -> Response {
         let sense = if enabled { Sense::click() } else { Sense::hover() };
         let (rect, response) = ui.allocate_exact_size(Vec2::splat(Self::SIDE), sense);
-        let (hover, press) = if enabled { Motion::states(ui.ctx(), &response) } else { (0.0, 0.0) };
-        let (fill, line, ink) = Self::colours(tone, hover, press);
-        let alpha = if enabled { 1.0 } else { Self::DISABLED_ALPHA };
-        let painter = ui.painter();
-        Draw::fill(painter, rect, Self::RADIUS, StudioPalette::alpha(fill, alpha));
-        Draw::outline(painter, rect, Self::RADIUS, 1.0, StudioPalette::alpha(line, alpha));
-        if enabled && response.has_focus() {
-            Draw::outline(painter, rect, Self::RADIUS, 2.0, StudioPalette::ACCENT);
-        }
-        let icon_centre = egui::pos2(rect.center().x, rect.top() + Self::ICON_Y);
-        match icon {
-            RailIcon::Glyph(glyph) => {
-                Draw::icon(painter, icon_centre, glyph, Self::ICON, StudioPalette::alpha(ink, alpha));
-            }
-            RailIcon::RecordDot => {
-                let dot = StudioPalette::mix(StudioPalette::RECORD, StudioPalette::RECORD_HOVER, hover);
-                painter.circle_filled(icon_centre, Self::DOT_RADIUS, StudioPalette::alpha(dot, alpha));
-            }
-        }
-        let label_pos = egui::pos2(rect.center().x, rect.bottom() - Self::LABEL_Y);
-        let label_ink = if tone == RailTone::Active { StudioPalette::TEXT } else { ink };
-        let font = Typeface::semibold(Typeface::CAPTION_SIZE);
-        Draw::text(painter, label_pos, Align2::CENTER_CENTER, label, font, StudioPalette::alpha(label_ink, alpha));
+        Self::paint(ui.painter(), rect, icon, label, tone, InteractionState::of(&response, enabled));
         response
     }
 
-    // (fill, outline, icon and label) for a tone at the given hover and press amounts
-    fn colours(tone: RailTone, hover: f32, press: f32) -> (Color32, Color32, Color32) {
-        let (rest, hot, line, hot_line, ink) = match tone {
-            RailTone::Normal => (
-                StudioPalette::CARD,
-                StudioPalette::BG_HOVER,
-                StudioPalette::LINE_OVERLAY,
-                StudioPalette::LINE_STRONG,
-                StudioPalette::TEXT,
-            ),
-            RailTone::Active => (
-                StudioPalette::ACCENT_SOFT,
-                StudioPalette::alpha(StudioPalette::ACCENT, 0.3),
-                StudioPalette::alpha(StudioPalette::ACCENT, 0.55),
-                StudioPalette::ACCENT,
-                StudioPalette::ACCENT_HOVER,
-            ),
-            RailTone::Danger => (
-                StudioPalette::CARD,
-                StudioPalette::DANGER_SOFT,
-                StudioPalette::LINE_OVERLAY,
-                StudioPalette::alpha(StudioPalette::DANGER, 0.6),
-                StudioPalette::DANGER,
-            ),
+    /// Paints the tile in `rect` in `state`.
+    pub fn paint(painter: &Painter, rect: Rect, icon: RailIcon, label: &str, tone: RailTone, state: InteractionState) {
+        let painter = state.painter(painter);
+        if state == InteractionState::Focused {
+            FocusRing::paint(&painter, rect, Corner::Panel.radius(rect));
+        }
+        let (fill, border, ink, label_ink) = Self::colours(tone, state.inner());
+        Draw::surface(&painter, rect, Corner::Panel, fill, Some(border), Elevation::Floating);
+        let galley = Draw::galley(&painter, label, Self::LABEL, label_ink, TextFit::Truncate(rect.width()));
+        let mark = match icon {
+            RailIcon::Glyph(_) => Self::ICON,
+            RailIcon::RecordDot => Self::DOT,
         };
-        let fill = StudioPalette::mix(StudioPalette::mix(rest, hot, hover), StudioPalette::BG_ACTIVE, press * 0.6);
-        (fill, StudioPalette::mix(line, hot_line, hover), ink)
+        let top = rect.center().y - (mark + Self::GAP + galley.size().y) / 2.0;
+        let centre = pos2(rect.center().x, top + mark / 2.0);
+        match icon {
+            RailIcon::Glyph(glyph) => {
+                let font = FontFace::Icons.id(Self::ICON);
+                painter.text(centre, Align2::CENTER_CENTER, glyph, font, ink);
+            }
+            RailIcon::RecordDot => {
+                let dot = if state.inner() == InteractionState::Rest {
+                    <color::Playhead as ColorToken>::VALUE
+                } else {
+                    <color::PlayheadHover as ColorToken>::VALUE
+                };
+                painter.circle_filled(centre, Self::DOT / 2.0, dot);
+            }
+        }
+        let at = Align2::CENTER_TOP.anchor_size(pos2(rect.center().x, top + mark + Self::GAP), galley.size());
+        painter.galley(at.min, galley, label_ink);
+    }
+
+    // (fill, border, icon, label) for a tone in a state: Paper `A89-0` Default, Hover, Pressed, Resume and Discard
+    fn colours(tone: RailTone, state: InteractionState) -> (Color32, Color32, Color32, Color32) {
+        let text = <color::Text as ColorToken>::VALUE;
+        match tone {
+            RailTone::Normal => {
+                let (fill, border) = match state {
+                    InteractionState::Hover => {
+                        (<color::BgHover as ColorToken>::VALUE, <color::LineStrong as ColorToken>::VALUE)
+                    }
+                    InteractionState::Pressed => {
+                        (<color::BgActive as ColorToken>::VALUE, <color::LineStrong as ColorToken>::VALUE)
+                    }
+                    _ => (<color::Card as ColorToken>::VALUE, <color::LineOverlay as ColorToken>::VALUE),
+                };
+                (fill, border, text, text)
+            }
+            RailTone::Active => {
+                let fill = match state {
+                    InteractionState::Hover => <color::AccentSoftHover as ColorToken>::VALUE,
+                    InteractionState::Pressed => <color::AccentSoftPress as ColorToken>::VALUE,
+                    _ => <color::AccentSoft as ColorToken>::VALUE,
+                };
+                (fill, <color::Accent as ColorToken>::VALUE, <color::AccentHover as ColorToken>::VALUE, text)
+            }
+            RailTone::Danger => {
+                let danger = <color::Danger as ColorToken>::VALUE;
+                if state == InteractionState::Rest {
+                    (<color::Card as ColorToken>::VALUE, <color::LineOverlay as ColorToken>::VALUE, danger, danger)
+                } else {
+                    (<color::DangerSoft as ColorToken>::VALUE, danger, danger, danger)
+                }
+            }
+        }
     }
 }

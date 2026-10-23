@@ -16,6 +16,15 @@ fn chord_text_parses_modifiers_in_any_order_and_formats_canonically() {
 }
 
 #[test]
+fn keys_name_each_cap_in_canonical_order() {
+    let chord = Chord { key: 0x79, ctrl: true, shift: true, alt: false };
+    let unnamed = Chord { key: 0xE9, ctrl: false, shift: false, alt: true };
+
+    assert_eq!(ChordText::keys(chord), ["Ctrl", "Shift", "F10"]);
+    assert_eq!(ChordText::keys(unnamed), ["Alt", "VK_0xE9"]);
+}
+
+#[test]
 fn modifier_alone_is_a_chord() {
     let ctrl = ChordText::parse("Ctrl");
 

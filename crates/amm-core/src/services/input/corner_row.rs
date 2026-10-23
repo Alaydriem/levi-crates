@@ -5,10 +5,13 @@ use crate::structs::menu::{CornerSlot, CornerTarget};
 pub struct CornerRow;
 
 impl CornerRow {
+    // the margins keep the row clear of the game's own version text
     pub const RIGHT_MARGIN: f32 = 24.0;
     pub const BOTTOM_MARGIN: f32 = 48.0;
-    pub const HEIGHT: f32 = 36.0;
-    pub const GAP: f32 = 6.0;
+    /// Paper: Entry Point, `Components · capture rail & corner buttons`, the corner buttons: 45 high and 8 apart.
+    /// levi-ui `CornerButton::HEIGHT` is the same value; an amm-ui test checks that they agree.
+    pub const HEIGHT: f32 = 45.0;
+    pub const GAP: f32 = 8.0;
 
     /// Writes the slots for a screen of `width` by `height` into `out` (cleared first): Mods first, then one slot
     /// per entry with the width the view measured for it.

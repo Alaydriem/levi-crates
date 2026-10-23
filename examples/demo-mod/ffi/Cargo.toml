@@ -20,7 +20,8 @@ workspace = true
 amm-abi.workspace = true
 amm-client.workspace = true
 amm-core = { workspace = true, features = ["egui"] }
-studio-ui.workspace = true
+levi-ui.workspace = true
+levi-i18n.workspace = true
 egui.workspace = true
 curia.workspace = true
 chrono.workspace = true

@@ -217,3 +217,17 @@ fn a_card_shown_while_a_temporary_hud_shot_is_in_flight_keeps_its_hud_lease() {
     assert!(FakeTable::with(|state| state.released.is_empty()), "the shown card keeps the Hud lease");
     assert_eq!(demo.screenshot_line(), "Saved demo-1.png");
 }
+
+#[test]
+fn the_demo_reads_the_language_at_start_and_on_a_change() {
+    let dir = TempDir::new().expect("temp dir");
+    let mut demo = demo(&dir);
+    let at_start = FakeTable::with(|state| state.locale_reads);
+
+    FakeTable::with(|state| state.locale = "en_XA");
+    FakeTable::push_event(ModEvent::LocaleChanged);
+    demo.tick();
+
+    assert_eq!(at_start, 1);
+    assert_eq!(FakeTable::with(|state| state.locale_reads), 2);
+}

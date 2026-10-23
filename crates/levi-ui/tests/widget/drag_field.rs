@@ -115,6 +115,25 @@ fn degrees_join_and_words_are_spaced() {
 }
 
 #[test]
+fn joined_unit_has_no_gap() {
+    let rect = Rect::from_min_max(pos2(20.0, 20.0), pos2(140.0, 54.0));
+    let mut value = 3.0;
+    let shapes = PaintCapture::shapes(|painter| {
+        DragField::new(egui::Id::NULL, &mut value).unit(DragUnit::Joined(Sample::text("x"))).paint(
+            painter,
+            rect,
+            InteractionState::Rest,
+            &FieldLook::default(),
+        );
+    });
+    let mut texts = PaintCapture::text_rects(&shapes);
+    texts.sort_by(|a, b| a.1.left().total_cmp(&b.1.left()));
+
+    assert_eq!(texts.iter().map(|(text, _)| text.as_str()).collect::<Vec<_>>(), ["3.00", "x"]);
+    assert!((texts[1].1.left() - texts[0].1.right()).abs() < 0.5);
+}
+
+#[test]
 fn long_value_is_cut_before_the_label() {
     let rect = Rect::from_min_max(pos2(20.0, 20.0), pos2(140.0, 54.0));
     let mut value = 1e12;

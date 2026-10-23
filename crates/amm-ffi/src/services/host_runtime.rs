@@ -28,7 +28,7 @@ use amm_store::services::{ConfigFile, IoQueue, IoThread};
 use amm_store::structs::ReadOutcome;
 use amm_ui::model::{PanelAction, PanelModel};
 use amm_ui::runtime::PanelRuntime;
-use studio_ui::theme::FontSource;
+use levi_ui::font::FontSource;
 
 use super::{CaptureRelay, ClientSlot, FrameCompositor, HolderBook, HostShared, LogBridge, UiEventBuffer};
 use crate::types::{AmmHostFrame, AmmHostFrameInput, AmmHostRoute};
@@ -99,7 +99,7 @@ impl HostRuntime {
         Ok(Self {
             checker: DescriptorChecker::new(budgets.max_keybinds, budgets.max_fields),
             io: Some(io),
-            panel: PanelRuntime::new(FontSource::Embedded),
+            panel: PanelRuntime::new(FontSource::Embedded, manager.locale()),
             compositor: Some(FrameCompositor::new(&budgets)),
             captures: CaptureRelay::new(),
             slots: (0..slot_count).map(|_| ClientSlot::new(budgets.event_queue)).collect(),
@@ -311,6 +311,18 @@ impl HostRuntime {
         let id =
             self.manager.register_menu_entry(index, label, mark, screens).map_err(|error| AmmStatus::from(&error))?;
         Ok(id.0)
+    }
+
+    /// The language code, read by the mod with `handle`. That mod now gets `LocaleChanged`.
+    pub fn read_locale(&mut self, handle: AmmHandle) -> Result<String, AmmStatus> {
+        let index = self.index(handle)?;
+        Ok(self.manager.read_locale(index))
+    }
+
+    /// The person picked another language in the panel.
+    pub fn set_locale(&mut self, code: &str) {
+        self.manager.set_locale(code);
+        self.panel.set_locale(code);
     }
 
     pub fn set_cursor_mode(&mut self, handle: AmmHandle, on: bool) -> Result<(), AmmStatus> {
@@ -626,6 +638,10 @@ impl HostRuntime {
             }
             PanelAction::SetSuspension(key, resolution) => {
                 self.manager.set_suspension_resolution(key.clone(), *resolution);
+                Ok(())
+            }
+            PanelAction::SetLanguage(code) => {
+                self.set_locale(code);
                 Ok(())
             }
             PanelAction::Select(_) | PanelAction::SelectTab(_) => Ok(()),

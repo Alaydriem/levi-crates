@@ -1,8 +1,9 @@
 use amm_core::services::input::CornerRow;
 use amm_core::structs::menu::{CornerSlot, CornerTarget};
 use egui::{Rect, Ui, UiBuilder, pos2};
-use studio_ui::theme::Icon;
-use studio_ui::widgets::CornerButton;
+use levi_i18n::text::{Text, UserText};
+use levi_ui::icon::Icon;
+use levi_ui::widget::{CornerButton, CornerButtonLead};
 
 use crate::model::{PanelAction, PanelIntent, PanelModel};
 
@@ -18,7 +19,7 @@ impl CornerRowView {
             .menu_entries()
             .map(|entry| {
                 let target = CornerTarget::Entry { owner: entry.owner, id: entry.id };
-                (target, CornerButton::labelled_width(ui, &entry.label))
+                (target, Self::entry_button(&entry.mark, &entry.label).width(ui.ctx()))
             })
             .collect();
         let mut slots: Vec<CornerSlot> = Vec::with_capacity(entries.len() + 1);
@@ -26,17 +27,16 @@ impl CornerRowView {
         for slot in &slots {
             let [min_x, min_y, max_x, max_y] = slot.rect;
             let rect = Rect::from_min_max(pos2(min_x, min_y), pos2(max_x, max_y));
-            let clicked = ui
-                .scope_builder(UiBuilder::new().max_rect(rect), |ui| match slot.target {
-                    CornerTarget::Mods => CornerButton::icon(ui, Icon::PUZZLE),
-                    CornerTarget::Entry { owner, id } => {
-                        let entry = model.menu_entries().find(|entry| entry.owner == owner && entry.id == id);
-                        let (mark, label) = entry.map_or(("", ""), |entry| (entry.mark.as_str(), entry.label.as_str()));
-                        CornerButton::labelled(ui, mark, label)
-                    }
-                })
-                .inner
-                .clicked();
+            let button = match slot.target {
+                CornerTarget::Mods => CornerButton::new(CornerButtonLead::Icon(Icon::Mods)),
+                CornerTarget::Entry { owner, id } => {
+                    let entry = model.menu_entries().find(|entry| entry.owner == owner && entry.id == id);
+                    let (mark, label) = entry.map_or(("", ""), |entry| (entry.mark.as_str(), entry.label.as_str()));
+                    Self::entry_button(mark, label)
+                }
+            };
+            // a child ui, so the row never moves the cursor of the screen under it
+            let clicked = button.show(&mut ui.new_child(UiBuilder::new().max_rect(rect))).clicked();
             if clicked {
                 let action = match slot.target {
                     CornerTarget::Mods => PanelAction::Open,
@@ -47,5 +47,11 @@ impl CornerRowView {
         }
         CornerRow::bounds(&slots)
             .map(|[min_x, min_y, max_x, max_y]| Rect::from_min_max(pos2(min_x, min_y), pos2(max_x, max_y)))
+    }
+
+    // a mod's entry: its mark and its label, both as the mod gave them
+    fn entry_button(mark: &str, label: &str) -> CornerButton {
+        CornerButton::new(CornerButtonLead::Mark(UserText::from_model(mark.to_owned())))
+            .label(Text::user(UserText::from_model(label.to_owned())))
     }
 }

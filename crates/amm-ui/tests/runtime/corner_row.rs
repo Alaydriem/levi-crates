@@ -1,9 +1,11 @@
+use amm_core::services::input::CornerRow;
 use amm_core::structs::frame::{FrameInputData, MenuScreen, UiEvent, UiEventKind};
 use amm_core::structs::menu::{MenuEntryId, MenuScreens};
 use amm_core::structs::mesh::MeshBuffers;
 use amm_ui::model::{PanelAction, PanelModel};
 use amm_ui::runtime::PanelRuntime;
-use studio_ui::theme::{FontSource, Metrics};
+use levi_ui::font::FontSource;
+use levi_ui::widget::CornerButton;
 
 use crate::support::{FourMods, MINIMAP};
 
@@ -26,7 +28,7 @@ fn pointer(kind: UiEventKind, (x, y): (f32, f32), down: bool) -> UiEvent {
 // the row's rect after one pass, then the actions of a click at `x` (from the row's right edge) on its middle line
 fn click_from_right(mods: &FourMods, from_right: f32) -> ([f32; 4], Vec<PanelAction>) {
     let model = PanelModel::new(&mods.manager, "1.4.1", 0);
-    let mut runtime = PanelRuntime::new(FontSource::BuiltIn);
+    let mut runtime = PanelRuntime::new(FontSource::BuiltIn, "");
     let mut out = MeshBuffers::new();
     runtime.run(&input_with(0.0, &[]), &model, &mut out);
     let rect = runtime.menu_button_rect().unwrap_or_else(|| panic!("the row is placed"));
@@ -38,13 +40,19 @@ fn click_from_right(mods: &FourMods, from_right: f32) -> ([f32; 4], Vec<PanelAct
 }
 
 #[test]
+fn the_layout_height_is_the_button_height() {
+    // amm-core lays the row out without levi-ui; the button it lays out must fill its slot
+    assert_eq!(CornerRow::HEIGHT, CornerButton::HEIGHT);
+}
+
+#[test]
 fn mods_is_square_icon_with_no_entries() {
     let mut mods = FourMods::new(MINIMAP);
     mods.manager.set_menu_screen(MenuScreen::Start);
 
-    let (rect, actions) = click_from_right(&mods, Metrics::BUTTON / 2.0);
+    let (rect, actions) = click_from_right(&mods, CornerButton::HEIGHT / 2.0);
 
-    assert_eq!(rect, [1860.0, 996.0, 1896.0, 1032.0]);
+    assert_eq!(rect, [1851.0, 987.0, 1896.0, 1032.0]);
     assert_eq!(actions, [PanelAction::Open]);
 }
 
@@ -55,9 +63,9 @@ fn mods_is_square_icon_when_entries_exist() {
     let _ = mods.manager.register_menu_entry(dejavu, "Dejavu", "DV", MenuScreens::START);
     mods.manager.set_menu_screen(MenuScreen::Start);
 
-    let (rect, actions) = click_from_right(&mods, Metrics::BUTTON / 2.0);
+    let (rect, actions) = click_from_right(&mods, CornerButton::HEIGHT / 2.0);
 
-    assert!(rect[0] < 1860.0 - 6.0 - 50.0, "the row reaches left of Mods: {rect:?}");
+    assert!(rect[0] < 1851.0 - CornerRow::GAP - 50.0, "the row reaches left of Mods: {rect:?}");
     assert_eq!(rect[2], 1896.0);
     assert_eq!(actions, [PanelAction::Open]);
 }
@@ -69,7 +77,7 @@ fn entry_click_returns_entry_target() {
     let _ = mods.manager.register_menu_entry(dejavu, "Dejavu", "DV", MenuScreens::START);
     mods.manager.set_menu_screen(MenuScreen::Start);
 
-    let (_, actions) = click_from_right(&mods, Metrics::BUTTON + 6.0 + 30.0);
+    let (_, actions) = click_from_right(&mods, CornerButton::HEIGHT + CornerRow::GAP + 30.0);
 
     assert_eq!(actions, [PanelAction::MenuEntry { owner: dejavu, id: MenuEntryId(1) }]);
 }
@@ -81,7 +89,7 @@ fn a_start_only_entry_is_not_on_the_pause_screen() {
     let _ = mods.manager.register_menu_entry(dejavu, "Dejavu", "DV", MenuScreens::START);
     mods.manager.set_menu_screen(MenuScreen::Pause);
 
-    let (rect, _) = click_from_right(&mods, Metrics::BUTTON / 2.0);
+    let (rect, _) = click_from_right(&mods, CornerButton::HEIGHT / 2.0);
 
-    assert_eq!(rect, [1860.0, 996.0, 1896.0, 1032.0]);
+    assert_eq!(rect, [1851.0, 987.0, 1896.0, 1032.0]);
 }

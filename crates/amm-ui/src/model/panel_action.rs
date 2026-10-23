@@ -33,4 +33,6 @@ pub enum PanelAction {
         owner: ModIndex,
         id: MenuEntryId,
     },
+    /// The person picked a language on the Manager settings page: a language code, empty for English.
+    SetLanguage(String),
 }

@@ -1,3 +1,4 @@
+//! Old studio-ui theme. Kept until DejaVu (Plan 08) moves to levi-ui; its frame handler installs it.
 use egui::{Context, CornerRadius, Stroke, Theme, Visuals};
 
 use crate::theme::{FontLoader, FontSource, Metrics, StudioPalette};

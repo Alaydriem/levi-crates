@@ -1,7 +1,7 @@
 use egui::Color32;
 use levi_ui::tokens::ColorToken;
 use studio_ui::tokens::color;
-use studio_ui::tokens::selector::{AxisColor, ModeColor, SceneColor, StatusColor, TrackColor};
+use studio_ui::tokens::selector::{ModeColor, SceneColor, StatusColor, TrackColor};
 
 #[test]
 fn scene_lime_is_b5e853() {
@@ -15,7 +15,6 @@ fn selectors_list_every_variant_in_paper_order() {
     assert_eq!(TrackColor::ALL.len(), 5);
     assert_eq!(StatusColor::ALL.len(), 5);
     assert_eq!(ModeColor::ALL, [ModeColor::Edit, ModeColor::Preview, ModeColor::ReadOnly, ModeColor::Busy]);
-    assert_eq!(AxisColor::ALL.len(), 3);
 }
 
 #[test]

@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use amm_client::link::{ApiTable, EventDrain, ManagerLink};
 use amm_core::errors::LinkError;
@@ -6,6 +7,10 @@ use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::{KeybindPhase, ModEvent};
 use amm_core::structs::lease::AcquireOutcome;
+use levi_i18n::message::Message;
+use levi_i18n::service::{LocaleSetting, LocalizationService};
+use levi_ui::LeviUiMessage;
+use levi_ui::text::LeviUiPacks;
 
 use super::{DemoUi, SecondMod};
 use crate::structs::{DemoAction, DemoCell, DemoConfig, EventName, PendingShot};
@@ -63,6 +68,7 @@ impl DemoMod {
             pending: Vec::with_capacity(EventDrain::CAPACITY),
         };
         demo.reload_config();
+        demo.apply_locale();
         if demo.cell.with(|state| state.config().debug_second_mod) {
             demo.second = Self::register_second(table, config_dir);
         }
@@ -107,6 +113,15 @@ impl DemoMod {
         }
     }
 
+    // The widgets' own words follow the manager's language. A manager older than ABI 1.5 has none: English.
+    fn apply_locale(&self) {
+        let Some(code) = self.link.locale() else {
+            return;
+        };
+        let service = LocalizationService::new(vec![(LeviUiMessage::DOMAIN, LeviUiPacks::SOURCE)]);
+        self.link.set_localizer(Arc::new(service.load(&LocaleSetting::from_code(&code))));
+    }
+
     fn reload_config(&mut self) {
         match self.link.config::<DemoConfig>() {
             Ok(config) => self.cell.with(|state| state.apply_config(config)),
@@ -130,6 +145,7 @@ impl DemoMod {
                 }
             }
             ModEvent::SettingsChanged { .. } => self.reload_config(),
+            ModEvent::LocaleChanged => self.apply_locale(),
             ModEvent::ScreenshotTaken { sequence, ok: false } => self.finish_shot(sequence, false),
             ModEvent::ScreenshotWritten { sequence, ok } => self.finish_shot(sequence, ok),
             _ => {}

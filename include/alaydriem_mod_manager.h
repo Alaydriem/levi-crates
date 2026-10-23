@@ -15,7 +15,7 @@
 /*
  The ABI minor version. It grows when functions are added at the end of the table.
  */
-#define AMM_ABI_MINOR 4
+#define AMM_ABI_MINOR 5
 
 /*
  The result code of a table function.
@@ -141,6 +141,11 @@ enum AmmEventKind
    Since 1.4. The person clicked the mod's menu entry whose id is in `code`.
    */
   AMM_EVENT_KIND_MENU_ENTRY_CLICKED,
+  /*
+   Since 1.5. The person picked another language. Only a mod that has called `locale` gets it; the mod calls
+   `locale` again.
+   */
+  AMM_EVENT_KIND_LOCALE_CHANGED,
 };
 #ifndef __cplusplus
 typedef uint8_t AmmEventKind;
@@ -246,6 +251,7 @@ typedef struct AmmAcquireResult {
  - `ScreenshotWritten`: `code` is the capture sequence, `phase` is 1 when the PNG file is in place and 0 when
    the encode or the write failed, which leaves no file.
  - `MenuEntryClicked`: `code` is the id `register_menu_entry` gave the entry.
+ - `LocaleChanged`: no field; the mod reads the code again with `locale`.
  */
 typedef struct AmmEvent {
   AmmEventKind kind;
@@ -544,6 +550,16 @@ typedef struct AmmApi {
                                    uintptr_t mark_len,
                                    uint8_t screens,
                                    uint16_t *out_id);
+  /*
+   Game thread. Since 1.5. The language code the person picked in the manager, as UTF-8: empty for English,
+   `en_XA` for the pseudo-locale, or a locale such as `ru` or `pt_BR`. It is copied into `out_buf`, a buffer
+   the caller owns with room for `out_cap` bytes, and the call returns its length. A return value greater than
+   `out_cap` means the buffer was too small: nothing was written, and the caller may call again with a buffer
+   of that length. `out_buf` may be null when `out_cap` is 0. A handle that names no live registration gives
+   0. The first call marks the mod as a reader: only a reader gets `LocaleChanged`, so a mod built for 1.4 or
+   older never sees that event kind. The manager keeps no pointer to the buffer after the call.
+   */
+  uint32_t (*locale)(struct AmmHandle handle, uint8_t *out_buf, uintptr_t out_cap);
 } AmmApi;
 
 #endif  /* ALAYDRIEM_MOD_MANAGER_H */

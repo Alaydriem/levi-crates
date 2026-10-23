@@ -193,6 +193,18 @@ fn holder_reads_an_id_longer_than_its_first_buffer() {
 }
 
 #[test]
+fn link_reads_the_locale() {
+    let link = FakeTable::link(IdleHandler);
+    let english = link.locale();
+    FakeTable::with(|state| state.locale = "en_XA");
+
+    let pseudo = link.locale();
+
+    assert_eq!(english.as_deref(), Some(""));
+    assert_eq!(pseudo.as_deref(), Some("en_XA"));
+}
+
+#[test]
 fn a_link_without_a_frame_registers_with_no_callbacks_and_unregisters_on_drop() {
     let link = FakeTable::link_without_frame();
     let handle = FakeTable::with(|state| state.handle);

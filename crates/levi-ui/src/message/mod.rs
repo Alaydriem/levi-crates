@@ -16,6 +16,7 @@ pub enum LeviUiMessage {
     ChangedInGame,
     InvalidColour,
     EnterANumber,
+    Cancel,
 }
 
 impl Message for LeviUiMessage {
@@ -33,6 +34,7 @@ impl Message for LeviUiMessage {
         Self::ChangedInGame,
         Self::InvalidColour,
         Self::EnterANumber,
+        Self::Cancel,
     ];
 
     fn index(self) -> usize {
@@ -53,6 +55,7 @@ impl Message for LeviUiMessage {
             Self::ChangedInGame => "Changed in game to {value}",
             Self::InvalidColour => "Use #RRGGBB or #RRGGBBAA.",
             Self::EnterANumber => "Enter a number",
+            Self::Cancel => "Cancel",
         }
     }
 

@@ -70,13 +70,19 @@ impl<'a> PageHeader<'a> {
         self
     }
 
+    /// The bar's height: the lead or the text column, whichever is taller, and the padding.
+    pub fn height(&self) -> f32 {
+        let panel = self.eyebrow.is_some();
+        self.lead.side(panel).max(self.column_height(panel)) + 2.0 * Self::PAD_Y
+    }
+
     /// Takes the full width.
     pub fn show(mut self, ui: &mut Ui) -> Response {
         let panel = self.eyebrow.is_some();
         let gap = <spacing::L as SpacingToken>::VALUE;
         let lead = self.lead.side(panel);
         let column_height = self.column_height(panel);
-        let height = lead.max(column_height) + 2.0 * Self::PAD_Y;
+        let height = self.height();
         let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
         let painter = ui.painter().clone();
         Surface::paint(&painter, rect, SurfaceLevel::Panel, Elevation::Flat);

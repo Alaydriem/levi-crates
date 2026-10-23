@@ -53,3 +53,6 @@ msgstr ""
 
 msgid "Enter a number"
 msgstr ""
+
+msgid "Cancel"
+msgstr ""

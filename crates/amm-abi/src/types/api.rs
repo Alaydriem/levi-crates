@@ -142,4 +142,12 @@ pub struct AmmApi {
             out_id: *mut u16,
         ) -> AmmStatus,
     >,
+    /// Game thread. Since 1.5. The language code the person picked in the manager, as UTF-8: empty for English,
+    /// `en_XA` for the pseudo-locale, or a locale such as `ru` or `pt_BR`. It is copied into `out_buf`, a buffer
+    /// the caller owns with room for `out_cap` bytes, and the call returns its length. A return value greater than
+    /// `out_cap` means the buffer was too small: nothing was written, and the caller may call again with a buffer
+    /// of that length. `out_buf` may be null when `out_cap` is 0. A handle that names no live registration gives
+    /// 0. The first call marks the mod as a reader: only a reader gets `LocaleChanged`, so a mod built for 1.4 or
+    /// older never sees that event kind. The manager keeps no pointer to the buffer after the call.
+    pub locale: Option<unsafe extern "C" fn(handle: AmmHandle, out_buf: *mut u8, out_cap: usize) -> u32>,
 }

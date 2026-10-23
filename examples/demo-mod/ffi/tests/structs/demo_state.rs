@@ -1,15 +1,15 @@
 use demo_ffi::structs::{DemoConfig, DemoState};
-use studio_ui::theme::StudioPalette;
+use levi_ui::tokens::{ColorToken, color};
 
 #[test]
-fn a_bad_accent_text_falls_back_to_the_studio_accent() {
+fn a_bad_accent_text_falls_back_to_the_accent() {
     let mut config = DemoConfig::default();
     config.card.accent = "not a colour".to_string();
     let mut state = DemoState::new();
 
     state.apply_config(config);
 
-    assert_eq!(state.accent(), StudioPalette::ACCENT);
+    assert_eq!(state.accent(), <color::Accent as ColorToken>::VALUE);
 }
 
 #[test]

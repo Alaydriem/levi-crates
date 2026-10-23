@@ -90,10 +90,16 @@ description = "Criterion benches in amm-bench; arguments narrow the run"
 dir = "{{config_root}}"
 run = "cargo bench -p amm-bench --"
 
-[tasks.gallery]
-description = "Opens the studio-ui widget gallery example"
+[tasks."studio-ui:gallery"]
+description = "Opens the studio-ui gallery: one page per Paper artboard of a studio component"
 dir = "{{config_root}}"
-run = "cargo run --release -p studio-ui --example gallery --"
+run = "cargo run --release -p studio-ui --features gallery --example studio_gallery"
+
+[tasks."studio-ui:snapshots"]
+description = "Rewrites the studio-ui page snapshots in crates/studio-ui/tests/snapshots; compare them with Paper before keeping them"
+dir = "{{config_root}}"
+env = { UPDATE_SNAPSHOTS = "1" }
+run = "cargo nextest run -p studio-ui --no-fail-fast snapshot::"
 
 [tasks."levi-ui:gallery"]
 description = "Opens the levi-ui gallery: one page per Paper widget sheet"
@@ -111,6 +117,11 @@ description = "Writes the manager panel screenshots into docs/findings/amm-ui"
 dir = "{{config_root}}"
 run = "cargo run --release -p amm-ui --example panel_shots -- docs/findings/amm-ui"
 
+[tasks."panel-shots:pseudo"]
+description = "Writes the manager panel screenshots in the en_XA pseudo-locale into docs/findings/amm-ui/en_XA"
+dir = "{{config_root}}"
+run = "cargo run --release -p amm-ui --example panel_shots -- docs/findings/amm-ui/en_XA --locale en_XA"
+
 # Translation catalogs: each crate that shows text has crates/<crate>/i18n/ holding <domain>.pot
 # (written from its Message enum), the translators' <locale>.po files, and packs/<locale>.json.
 
@@ -118,13 +129,21 @@ run = "cargo run --release -p amm-ui --example panel_shots -- docs/findings/amm-
 description = "Writes each crate's i18n/<domain>.pot from its Message enum"
 dir = "{{config_root}}"
 # One `cargo run --example i18n_extract` line per crate with a Message enum (Plans 05 to 09 add theirs)
-run = ["cargo run -q -p levi-ui --example i18n_extract"]
+run = [
+  "cargo run -q -p levi-ui --example i18n_extract",
+  "cargo run -q -p amm-ui --example amm_i18n_extract",
+  "cargo run -q -p studio-ui --example studio_i18n_extract",
+]
 
 [tasks."i18n:check"]
 description = "Fails when a crate's .pot is out of date with its Message enum"
 dir = "{{config_root}}"
 # One `cargo run --example i18n_extract -- --check` line per crate with a Message enum
-run = ["cargo run -q -p levi-ui --example i18n_extract -- --check"]
+run = [
+  "cargo run -q -p levi-ui --example i18n_extract -- --check",
+  "cargo run -q -p amm-ui --example amm_i18n_extract -- --check",
+  "cargo run -q -p studio-ui --example studio_i18n_extract -- --check",
+]
 
 [tasks."i18n:build"]
 description = "Compiles each crate's i18n/<locale>.po into i18n/packs/<locale>.json; a locale under 90 % coverage is not shipped"

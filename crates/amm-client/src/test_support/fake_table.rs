@@ -50,6 +50,7 @@ impl FakeTable {
             texture_budget: Some(Self::texture_budget),
             request_screenshot_layers: Some(Self::request_screenshot_layers),
             register_menu_entry: Some(Self::register_menu_entry),
+            locale: Some(Self::locale),
         }
     }
 
@@ -269,6 +270,18 @@ impl FakeTable {
             unsafe { std::ptr::copy_nonoverlapping(id.as_ptr(), out_buf, id.len()) };
         }
         id.len() as u32
+    }
+
+    unsafe extern "C" fn locale(_: AmmHandle, out_buf: *mut u8, out_cap: usize) -> u32 {
+        let code = Self::with(|state| {
+            state.locale_reads += 1;
+            state.locale
+        });
+        if !code.is_empty() && code.len() <= out_cap {
+            // SAFETY: the client passes a buffer with room for out_cap bytes
+            unsafe { std::ptr::copy_nonoverlapping(code.as_ptr(), out_buf, code.len()) };
+        }
+        code.len() as u32
     }
 
     unsafe extern "C" fn poll_events(_: AmmHandle, out_buf: *mut AmmEvent, capacity: usize) -> usize {

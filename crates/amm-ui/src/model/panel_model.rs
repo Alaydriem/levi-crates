@@ -27,9 +27,6 @@ pub struct PanelModel<'a> {
 impl<'a> PanelModel<'a> {
     /// How long a toast stays on screen.
     pub const TOAST_TTL_MS: u64 = 5000;
-    const UNKNOWN_MOD: &'static str = "Unknown mod";
-    const MANAGER_NAME: &'static str = "Mod Manager";
-    const TOGGLE_LABEL: &'static str = "Open/close panel";
 
     pub fn new(manager: &'a ManagerService, levilamina_version: &'a str, now_ms: u64) -> Self {
         let panel_open = manager.snapshot().panel_open;
@@ -83,9 +80,10 @@ impl<'a> PanelModel<'a> {
         self.manager.registry().get(index)
     }
 
-    /// The display name of a registered mod, or a placeholder for a free slot.
-    pub fn display_name(&self, index: ModIndex) -> &'a str {
-        self.registered(index).map_or(Self::UNKNOWN_MOD, |registered| registered.descriptor.display_name.as_str())
+    /// The manager's language code: empty for English. It may name a language with no pack. Spaces
+    /// around it are dropped, as `LocaleSetting::from_code` drops them.
+    pub fn language(&self) -> &'a str {
+        self.manager.locale().trim()
     }
 
     pub fn keybind(&self, index: ModIndex, action: u16) -> Option<&'a KeybindDecl> {
@@ -147,8 +145,9 @@ impl<'a> PanelModel<'a> {
     fn toggle_row(&self) -> KeybindRow<'a> {
         KeybindRow {
             target: RebindTarget::ManagerToggle,
-            mod_name: Self::MANAGER_NAME,
-            label: Self::TOGGLE_LABEL,
+            // the view names the toggle's row and its group from messages
+            mod_name: "",
+            label: "",
             chord: self.config().toggle_chord,
             capability: None,
             scope: KeyScope::Global,

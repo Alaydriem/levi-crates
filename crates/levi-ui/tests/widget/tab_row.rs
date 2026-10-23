@@ -1,5 +1,6 @@
-use egui::{Key, Rect, Shape, pos2};
+use egui::{Color32, Key, Rect, Shape, pos2};
 use levi_ui::font::FontFace;
+use levi_ui::icon::Icon;
 use levi_ui::state::InteractionState;
 use levi_ui::tokens::{ColorToken, color};
 use levi_ui::widget::{TabRow, TabRowSize};
@@ -78,6 +79,34 @@ fn arrow_moves_selection() {
     });
     ClickProbe::tab_and_press(&mut harness, Key::ArrowRight);
     assert_eq!(harness.state().value, 1);
+}
+
+#[test]
+fn icons_lead_their_labels() {
+    let harness = ClickProbe::harness_with(0_usize, |ui, selected| {
+        TabRow::new(egui::Id::unique(3), selected, vec![Sample::text("General"), Sample::text("Keybinds")])
+            .icons(vec![Icon::Settings, Icon::Keyboard])
+            .show(ui)
+    });
+    let shapes: Vec<Shape> = harness.output().shapes.iter().map(|clipped| clipped.shape.clone()).collect();
+    let icons: Vec<(Rect, Color32)> = shapes
+        .iter()
+        .filter_map(|shape| match shape {
+            Shape::Text(text) if text.galley.job.sections[0].format.font_id.family == FontFace::Icons.family() => {
+                Some((text.galley.rect.translate(text.pos.to_vec2()), text.galley.job.sections[0].format.color))
+            }
+            _ => None,
+        })
+        .collect();
+    let labels = PaintCapture::text_rects(&shapes);
+    let label = |name: &str| labels.iter().find(|(text, _)| text == name).map(|(_, rect)| *rect);
+    let (Some(general), Some(keybinds)) = (label("General"), label("Keybinds")) else { panic!("no labels") };
+
+    assert_eq!(icons.len(), 2);
+    assert!(icons[0].0.right() <= general.left() && icons[0].0.left() > harness.state().rect.left());
+    assert!(icons[1].0.right() <= keybinds.left() && icons[1].0.left() > general.right());
+    assert_eq!(icons[0].1, color::AccentHover::VALUE, "the selected tab's icon is in the accent");
+    assert_eq!(icons[1].1, color::TextFaint::VALUE);
 }
 
 #[test]

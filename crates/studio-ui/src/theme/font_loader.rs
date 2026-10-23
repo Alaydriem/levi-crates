@@ -1,3 +1,4 @@
+//! Old studio-ui theme. Kept until DejaVu (Plan 08) moves to levi-ui; its frame handler installs it.
 use std::path::Path;
 use std::sync::Arc;
 
@@ -37,6 +38,12 @@ impl FontLoader {
         defs.families.insert(FontFamily::Name(Typeface::SEMIBOLD.into()), semibold_chain);
         defs.families.insert(FontFamily::Name(Typeface::MONO.into()), mono_chain);
         defs.families.insert(FontFamily::Name(Typeface::ICONS.into()), icon_chain);
+        // the levi-ui faces too, so a studio context can draw levi-ui widgets while the studio moves to levi-ui
+        let levi_source = match source {
+            FontSource::Embedded => levi_ui::font::FontSource::Embedded,
+            FontSource::BuiltIn => levi_ui::font::FontSource::BuiltIn,
+        };
+        levi_ui::font::FontLoader::register(&mut defs, levi_source, &levi_ui::font::FontLoader::font_dir());
         defs
     }
 

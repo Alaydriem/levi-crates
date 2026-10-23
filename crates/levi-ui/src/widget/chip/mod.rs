@@ -69,8 +69,9 @@ impl Chip {
         let enabled = self.disabled.is_none();
         let clickable = matches!(self.kind, ChipKind::Filter { .. }) && enabled;
         let sense = if clickable { Sense::click() } else { Sense::hover() };
-        let size = vec2(self.desired_width(ui.ctx()), Self::height());
-        let (rect, response) = ui.allocate_exact_size(size, sense);
+        // no wider than the room left: the label is cut with an ellipsis instead
+        let width = self.desired_width(ui.ctx()).min(ui.available_width().max(Self::height()));
+        let (rect, response) = ui.allocate_exact_size(vec2(width, Self::height()), sense);
         self.paint(ui.painter(), rect, InteractionState::of(&response, enabled));
         match (&self.disabled, clickable) {
             (Some(reason), _) => reason.tooltip().attach(response),

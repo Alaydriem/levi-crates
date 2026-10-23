@@ -1,8 +1,13 @@
 use amm_client::link::{FrameHandler, FrameInputView, FrameReply};
 use amm_core::structs::frame::{CursorShape, LayerKind};
 use egui::{Area, Context, Id, Rect, RichText, Sense, TextEdit, Ui, Window, pos2, vec2};
-use studio_ui::theme::{Metrics, StudioPalette, Typeface};
-use studio_ui::widgets::{CardFrame, TextButton, Toggle};
+use levi_i18n::text::Text;
+use levi_ui::LeviUiMessage;
+use levi_ui::draw::TypeSize;
+use levi_ui::font::FontFace;
+use levi_ui::tokens::rule::Elevation;
+use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
+use levi_ui::widget::{ButtonKind, Surface, SurfaceLevel, TextButton, Toggle};
 
 use crate::structs::{DemoCell, DemoState};
 
@@ -40,26 +45,31 @@ impl DemoUi {
     fn card(ctx: &Context, state: &DemoState) -> Rect {
         let config = state.config();
         let (align, offset) = config.card.corner.anchor();
-        let fill = StudioPalette::alpha(StudioPalette::CARD, config.card.opacity.clamp(0.0, 1.0) as f32);
+        let fill = <color::Card as ColorToken>::VALUE.gamma_multiply(config.card.opacity.clamp(0.0, 1.0) as f32);
         let shown = Area::new(Id::unique("demo.card")).anchor(align, offset).interactable(false).show(ctx, |ui| {
-            CardFrame::card().fill(fill).show(ui, |ui| {
-                ui.label(RichText::new("Demo").font(Typeface::semibold(Typeface::UI_SIZE)).color(state.accent()));
+            Surface::frame(SurfaceLevel::Card, Elevation::Floating).fill(fill).show(ui, |ui| {
+                ui.label(
+                    RichText::new("Demo").font(FontFace::Semibold.id(TypeSize::Body.points())).color(state.accent()),
+                );
                 ui.label(format!("Rows {}", config.card.rows));
                 ui.label(format!("Opacity {:.2}", config.card.opacity));
                 if !config.card.compact {
                     Self::marks(ui, config.card.rows, state);
                     Self::bar(ui, config.card.opacity, state);
                 }
-                ui.label(RichText::new(state.camera_line()).color(StudioPalette::TEXT_DIM));
+                ui.label(RichText::new(state.camera_line()).color(<color::TextDim as ColorToken>::VALUE));
                 if !state.name().is_empty() {
-                    ui.label(RichText::new(format!("Name {}", state.name())).color(StudioPalette::TEXT_DIM));
+                    ui.label(
+                        RichText::new(format!("Name {}", state.name())).color(<color::TextDim as ColorToken>::VALUE),
+                    );
                 }
                 if !state.screenshot_line().is_empty() {
-                    ui.label(RichText::new(state.screenshot_line()).color(StudioPalette::TEXT_DIM));
+                    ui.label(RichText::new(state.screenshot_line()).color(<color::TextDim as ColorToken>::VALUE));
                 }
                 if state.show_last_event() {
                     ui.label(
-                        RichText::new(format!("Last event {}", state.last_event())).color(StudioPalette::TEXT_DIM),
+                        RichText::new(format!("Last event {}", state.last_event()))
+                            .color(<color::TextDim as ColorToken>::VALUE),
                     );
                 }
             });
@@ -84,7 +94,7 @@ impl DemoUi {
 
     fn bar(ui: &mut Ui, fraction: f64, state: &DemoState) {
         let (rect, _) = ui.allocate_exact_size(vec2(Self::BAR.0, Self::BAR.1), Sense::hover());
-        ui.painter().rect_filled(rect, 3.0, StudioPalette::BG_FIELD);
+        ui.painter().rect_filled(rect, 3.0, <color::BgField as ColorToken>::VALUE);
         let filled = Rect::from_min_size(rect.min, vec2(rect.width() * fraction.clamp(0.0, 1.0) as f32, rect.height()));
         ui.painter().rect_filled(filled, 3.0, state.accent());
     }
@@ -103,18 +113,18 @@ impl DemoUi {
             .default_pos(pos2(Self::WINDOW_POS.0, Self::WINDOW_POS.1))
             .show(ctx, |ui| {
                 ui.label("This window holds the Overlay lease and asks for the cursor.");
-                ui.add_space(Metrics::GAP_S);
+                ui.add_space(<spacing::S as SpacingToken>::VALUE);
                 ui.horizontal(|ui| {
-                    Toggle::show(ui, &mut show_last_event);
+                    Toggle::new(&mut show_last_event).show(ui);
                     ui.label("Show the last event on the card");
                 });
-                ui.add_space(Metrics::GAP_S);
+                ui.add_space(<spacing::S as SpacingToken>::VALUE);
                 ui.horizontal(|ui| {
                     ui.label("Name");
                     ui.add(TextEdit::singleline(state.name_mut()).desired_width(Self::NAME_WIDTH));
                 });
-                ui.add_space(Metrics::GAP_S);
-                close = TextButton::secondary(ui, "Close").clicked();
+                ui.add_space(<spacing::S as SpacingToken>::VALUE);
+                close = TextButton::new(ButtonKind::Secondary, Text::message(LeviUiMessage::Close)).show(ui).clicked();
             });
         state.set_show_last_event(show_last_event);
         if close || !open {

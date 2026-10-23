@@ -5,12 +5,13 @@ use crate::structs::settings::HclDocument;
 
 /// Reads the manager's `config.hcl` and edits it, so the reader and the writer agree on one layout. Edits go
 /// through `HclDocument`, which keeps comments, order and every attribute the manager does not write. The manager
-/// writes `toggle_chord`, `enabled.<mod id>`, `resolutions.exclusive.<pair>` and `resolutions.suspension.<pair>`,
-/// where `<pair>` is `PairKey::attribute_name`.
+/// writes `toggle_chord`, `language`, `enabled.<mod id>`, `resolutions.exclusive.<pair>` and
+/// `resolutions.suspension.<pair>`, where `<pair>` is `PairKey::attribute_name`.
 pub struct ManagerConfigFile;
 
 impl ManagerConfigFile {
     const TOGGLE_CHORD: &'static str = "toggle_chord";
+    const LANGUAGE: &'static str = "language";
     const ENABLED: &'static str = "enabled";
     const EXCLUSIVE: &'static str = "resolutions.exclusive";
     const SUSPENSION: &'static str = "resolutions.suspension";
@@ -29,6 +30,10 @@ impl ManagerConfigFile {
 
     pub fn with_toggle_chord(document: &HclDocument, chord: Chord) -> HclDocument {
         document.with(Self::TOGGLE_CHORD, &hcl::Value::String(ChordText::format(chord)))
+    }
+
+    pub fn with_language(document: &HclDocument, code: &str) -> HclDocument {
+        document.with(Self::LANGUAGE, &hcl::Value::String(code.to_owned()))
     }
 
     pub fn with_enabled(document: &HclDocument, id: &str, enabled: bool) -> HclDocument {

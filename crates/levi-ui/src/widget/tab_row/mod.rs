@@ -6,6 +6,7 @@ use egui::{Context, CursorIcon, Id, Key, Painter, Rect, Response, Sense, Ui, pos
 use levi_i18n::text::Text;
 
 use crate::draw::{Corner, Draw, TextFit};
+use crate::icon::{Icon, IconSize};
 use crate::id::LeviUiId;
 use crate::motion::Motion;
 use crate::state::{ArrowKeys, DisabledReason, InteractionState, StateStyle};
@@ -20,16 +21,24 @@ pub struct TabRow<'a> {
     selected: &'a mut usize,
     tabs: Vec<Text>,
     size: TabRowSize,
+    icons: Vec<Icon>,
     disabled: Option<DisabledReason>,
 }
 
 impl<'a> TabRow<'a> {
     pub fn new(id: Id, selected: &'a mut usize, tabs: Vec<Text>) -> Self {
-        Self { id, selected, tabs, size: TabRowSize::Inspector, disabled: None }
+        Self { id, selected, tabs, size: TabRowSize::Inspector, icons: Vec::new(), disabled: None }
     }
 
     pub fn size(mut self, size: TabRowSize) -> Self {
         self.size = size;
+        self
+    }
+
+    /// An icon before each label, in tab order (Paper: Mod manager screen 01). The selected tab's
+    /// icon is `--color-accent-hover`, the others take their label's colour.
+    pub fn icons(mut self, icons: Vec<Icon>) -> Self {
+        self.icons = icons;
         self
     }
 
@@ -84,7 +93,9 @@ impl<'a> TabRow<'a> {
                 FocusRing::paint(&painter, *tab, Corner::Control.radius(*tab));
                 Draw::fill(&painter, *tab, Corner::Control, <color::BgPanel as ColorToken>::VALUE);
             }
-            Self::paint_body(&painter, *tab, text, self.size, states[index].inner(), index == *self.selected);
+            let icon = self.icons.get(index).copied();
+            let selected = index == *self.selected;
+            Self::paint_body(&painter, *tab, (text, icon), self.size, states[index].inner(), selected);
         }
         if let Some(tab) = tabs.get(*self.selected) {
             let target = Self::underline(*tab, self.size);
@@ -113,7 +124,7 @@ impl<'a> TabRow<'a> {
             FocusRing::paint(&painter, rect, Corner::Control.radius(rect));
             Draw::fill(&painter, rect, Corner::Control, <color::BgPanel as ColorToken>::VALUE);
         }
-        Self::paint_body(&painter, rect, text, size, state.inner(), selected);
+        Self::paint_body(&painter, rect, (text, None), size, state.inner(), selected);
         if selected {
             Draw::fill(&painter, Self::underline(rect, size), Corner::Full, <color::Accent as ColorToken>::VALUE);
         }
@@ -122,7 +133,7 @@ impl<'a> TabRow<'a> {
     fn paint_body(
         painter: &Painter,
         rect: Rect,
-        text: &Text,
+        (text, icon): (&Text, Option<Icon>),
         size: TabRowSize,
         state: InteractionState,
         selected: bool,
@@ -131,9 +142,23 @@ impl<'a> TabRow<'a> {
         Draw::fill(painter, rect, Corner::Control, fill);
         let color = if selected { <color::Text as ColorToken>::VALUE } else { <color::TextFaint as ColorToken>::VALUE };
         let label = UiText::resolve(painter.ctx(), text);
-        let room = (rect.width() - size.padding() * 2.0).max(0.0);
+        let lead = icon.map_or(0.0, |_| Self::icon_room());
+        let room = (rect.width() - size.padding() * 2.0 - lead).max(0.0);
         let galley = Draw::galley(painter, &label, size.text(), color, TextFit::Truncate(room));
-        painter.galley(rect.center() - galley.size() / 2.0, galley, color);
+        // the icon and the label are centred together
+        let left = rect.center().x - (lead + galley.size().x) / 2.0;
+        if let Some(icon) = icon {
+            let side = IconSize::Regular.points();
+            let slot = Rect::from_min_size(pos2(left, rect.center().y - side / 2.0), vec2(side, side));
+            let tint = if selected { <color::AccentHover as ColorToken>::VALUE } else { color };
+            icon.paint(painter, slot, IconSize::Regular, tint);
+        }
+        painter.galley(pos2(left + lead, rect.center().y - galley.size().y / 2.0), galley, color);
+    }
+
+    // an icon and the `--spacing-s` gap after it
+    fn icon_room() -> f32 {
+        IconSize::Regular.points() + <spacing::S as SpacingToken>::VALUE
     }
 
     // the 2 px underline at the bottom of a tab, inset by the tab padding
@@ -150,8 +175,10 @@ impl<'a> TabRow<'a> {
         let mut x = rect.left() + <spacing::S as SpacingToken>::VALUE;
         self.tabs
             .iter()
-            .map(|text| {
-                let width = Self::tab_width(ctx, text, self.size);
+            .enumerate()
+            .map(|(index, text)| {
+                let lead = if self.icons.get(index).is_some() { Self::icon_room() } else { 0.0 };
+                let width = Self::tab_width(ctx, text, self.size) + lead;
                 let tab = Rect::from_min_size(pos2(x, rect.top()), vec2(width, self.size.height()));
                 x += width;
                 tab

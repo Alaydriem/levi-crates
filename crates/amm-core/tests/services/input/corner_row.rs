@@ -17,9 +17,9 @@ fn corner_row_puts_mods_rightmost_and_entries_to_its_left() {
 
     assert_eq!(slots.len(), 2);
     assert_eq!(slots[0].target, CornerTarget::Mods);
-    assert_eq!(slots[0].rect, [1860.0, 996.0, 1896.0, 1032.0]);
+    assert_eq!(slots[0].rect, [1851.0, 987.0, 1896.0, 1032.0]);
     assert_eq!(slots[1].target, DEJAVU);
-    assert_eq!(slots[1].rect, [1744.0, 996.0, 1854.0, 1032.0]);
+    assert_eq!(slots[1].rect, [1733.0, 987.0, 1843.0, 1032.0]);
 }
 
 #[test]
@@ -36,7 +36,7 @@ fn mods_alone_is_one_square_slot() {
     let slots = layout(&[], 1280.0, 720.0);
 
     assert_eq!(slots.len(), 1);
-    assert_eq!(slots[0].rect, [1220.0, 636.0, 1256.0, 672.0]);
+    assert_eq!(slots[0].rect, [1211.0, 627.0, 1256.0, 672.0]);
 }
 
 #[test]
@@ -45,6 +45,6 @@ fn bounds_cover_every_slot() {
 
     let bounds = CornerRow::bounds(&slots);
 
-    assert_eq!(bounds, Some([slots[2].rect[0], 996.0, 1896.0, 1032.0]));
+    assert_eq!(bounds, Some([slots[2].rect[0], 987.0, 1896.0, 1032.0]));
     assert_eq!(CornerRow::bounds(&[]), None);
 }

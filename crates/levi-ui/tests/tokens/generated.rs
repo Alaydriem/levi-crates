@@ -26,6 +26,15 @@ fn soft_is_14_percent() {
 }
 
 #[test]
+fn axis_and_playhead_colours_are_levi_ui_tokens() {
+    use levi_ui::tokens::selector::AxisColor;
+    let axes =
+        [<color::AxisX as ColorToken>::VALUE, <color::AxisY as ColorToken>::VALUE, <color::AxisZ as ColorToken>::VALUE];
+    assert_eq!(AxisColor::ALL.map(AxisColor::color), axes);
+    assert_eq!(<color::Playhead as ColorToken>::VALUE, egui::Color32::from_rgb(0xFF, 0x4D, 0x5E));
+}
+
+#[test]
 fn generation_is_idempotent() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let read = |name: &str| {

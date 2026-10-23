@@ -1,7 +1,7 @@
 use amm_abi::types::{AmmFrameInput, AmmFrameOutput, AmmStatus};
 use amm_core::structs::frame::{FrameInputData, LayerKind, UiEvent};
 
-use super::{ClipboardBackend, ClipboardWorker, LayerContext};
+use super::{ClipboardBackend, ClipboardWorker, LayerContext, LocaleSlot};
 use crate::link::{FrameHandler, FrameInputView};
 
 /// A mod's egui runtime: the handler, one `LayerContext` per layer kind and the mod's clipboard, which the
@@ -13,6 +13,7 @@ pub struct EguiFrame<H: FrameHandler> {
     running: Option<LayerKind>,
     panic_logged: bool,
     clipboard: ClipboardWorker,
+    locale: LocaleSlot,
 }
 
 impl<H: FrameHandler> EguiFrame<H> {
@@ -28,7 +29,14 @@ impl<H: FrameHandler> EguiFrame<H> {
             running: None,
             panic_logged: false,
             clipboard: ClipboardWorker::new(backend),
+            locale: LocaleSlot::new(),
         }
+    }
+
+    /// The localizer every layer's widgets resolve their text with. Each pass reads it, so a change reaches the
+    /// next pass, and a context reset keeps it. `ManagerLink::set_localizer` writes it from the game thread.
+    pub fn locale(&self) -> &LocaleSlot {
+        &self.locale
     }
 
     /// The mod's clipboard, which its layers share.
@@ -48,7 +56,12 @@ impl<H: FrameHandler> EguiFrame<H> {
         let data = unsafe { Self::input_data(input) };
         let layer = LayerKind::from_bits(data.allowed_layers);
         self.running = Some(layer);
+        let localizer = self.locale.get();
         let context = self.layers[layer.slot()].get_or_insert_with(|| LayerContext::new(layer));
+        if context.take_fresh() {
+            self.handler.new_context(context.context_ref());
+        }
+        context.use_localizer(localizer);
         context.run(&mut self.handler, &FrameInputView::new(data, layer), &self.clipboard, out);
         self.running = None;
         AmmStatus::Ok

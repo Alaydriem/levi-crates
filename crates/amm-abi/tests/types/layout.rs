@@ -1,8 +1,8 @@
 use std::mem::{align_of, offset_of, size_of};
 
 use amm_abi::types::{
-    AmmApi, AmmCursorShape, AmmDrawCmd, AmmEvent, AmmSamplerKind, AmmTextureDelta, AmmUiEvent, AmmUiEventKind,
-    AmmVertex,
+    AmmApi, AmmCursorShape, AmmDrawCmd, AmmEvent, AmmEventKind, AmmSamplerKind, AmmTextureDelta, AmmUiEvent,
+    AmmUiEventKind, AmmVertex,
 };
 use amm_core::structs::frame::{CursorShape, UiEvent, UiEventKind};
 use amm_core::structs::mesh::{DrawCmd, SamplerKind, TextureDelta, Vertex};
@@ -18,7 +18,15 @@ fn api_table_field_offsets_are_stable() {
     assert_eq!(offset_of!(AmmApi, texture_budget), 16 + 13 * 8);
     assert_eq!(offset_of!(AmmApi, request_screenshot_layers), 16 + 14 * 8);
     assert_eq!(offset_of!(AmmApi, register_menu_entry), 16 + 15 * 8);
-    assert_eq!(size_of::<AmmApi>(), 16 + 16 * 8);
+    assert_eq!(offset_of!(AmmApi, locale), 16 + 16 * 8);
+    assert_eq!(size_of::<AmmApi>(), 16 + 17 * 8);
+}
+
+#[test]
+fn later_event_kinds_keep_their_wire_values() {
+    // a mod built for an older minor version decodes these bytes; a new kind only goes at the end
+    assert_eq!(AmmEventKind::MenuEntryClicked as u8, 16);
+    assert_eq!(AmmEventKind::LocaleChanged as u8, 17);
 }
 
 #[test]

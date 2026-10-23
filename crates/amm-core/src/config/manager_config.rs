@@ -6,6 +6,8 @@ use crate::config::{Budgets, ResolutionBook};
 use crate::structs::descriptor::Chord;
 
 /// The manager's own `config.hcl`. `menu_button` shows the Mods button while the game shows its cursor.
+/// `language` is the language code for every mod: empty for English, `en_XA` for the pseudo-locale, or a locale
+/// such as `ru`. An unknown code is kept as it is; each mod shows English for it.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(default)]
 pub struct ManagerConfig {
@@ -19,6 +21,7 @@ pub struct ManagerConfig {
     pub mod_log_levels: BTreeMap<String, String>,
     pub log_sessions_kept: usize,
     pub menu_button: bool,
+    pub language: String,
 }
 
 impl ManagerConfig {
@@ -54,6 +57,7 @@ impl Default for ManagerConfig {
             mod_log_levels: BTreeMap::new(),
             log_sessions_kept: Self::DEFAULT_SESSIONS_KEPT,
             menu_button: true,
+            language: String::new(),
         }
     }
 }

@@ -34,6 +34,19 @@ impl PaintCapture {
         out
     }
 
+    // each text shape as (text, painted rect)
+    pub fn text_rects(shapes: &[Shape]) -> Vec<(String, Rect)> {
+        shapes
+            .iter()
+            .filter_map(|shape| match shape {
+                Shape::Text(text) => {
+                    Some((text.galley.text().to_owned(), text.galley.rect.translate(text.pos.to_vec2())))
+                }
+                _ => None,
+            })
+            .collect()
+    }
+
     // every rect shape, nested shapes included
     pub fn rects(shapes: &[Shape]) -> Vec<RectShape> {
         let mut out = Vec::new();

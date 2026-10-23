@@ -2,11 +2,11 @@ use egui::Ui;
 
 use super::GalleryState;
 use super::sheet::{
-    AvatarSheet, BannerSheet, CardFrameSheet, CheckboxSheet, ChipSheet, ColourFieldSheet, DragFieldSheet,
-    DropdownSheet, EmptyStateSheet, IconButtonSheet, ListRowSheet, LoadingStateSheet, MenuItemSheet, ModalFrameSheet,
-    NavEntrySheet, PageHeaderSheet, SectionCardSheet, SectionHeaderSheet, SegmentedSheet, SliderSheet,
-    SplitterAndScrollSheet, StatusPillSheet, TabRowSheet, TableSheet, TextButtonSheet, TextFieldSheet, ToastSheet,
-    ToggleSheet,
+    AvatarSheet, BannerSheet, CardFrameSheet, CheckboxSheet, ChipSheet, ColourFieldSheet, ConfirmPopoverSheet,
+    CornerButtonSheet, DragFieldSheet, DropdownSheet, EmptyStateSheet, IconButtonSheet, KeyGlyphsSheet, ListRowSheet,
+    LoadingStateSheet, MenuItemSheet, ModalFrameSheet, NavEntrySheet, PageHeaderSheet, SectionCardSheet,
+    SectionHeaderSheet, SegmentedSheet, SliderSheet, SplitterAndScrollSheet, StatusPillSheet, TabRowSheet, TableSheet,
+    TextButtonSheet, TextFieldSheet, ToastSheet, ToggleSheet,
 };
 
 /// One gallery page per Paper widget sheet, in Paper order.
@@ -40,12 +40,15 @@ pub enum GallerySheet {
     Table,
     Toast,
     SplitterAndScroll,
+    CornerButton,
+    KeyGlyphs,
+    ConfirmPopover,
 }
 
 impl GallerySheet {
     /// The width of every Paper widget artboard.
     pub const WIDTH: f32 = 1240.0;
-    pub const ALL: [Self; 28] = [
+    pub const ALL: [Self; 31] = [
         Self::Toggle,
         Self::Slider,
         Self::IconButton,
@@ -74,6 +77,9 @@ impl GallerySheet {
         Self::Table,
         Self::Toast,
         Self::SplitterAndScroll,
+        Self::CornerButton,
+        Self::KeyGlyphs,
+        Self::ConfirmPopover,
     ];
 
     /// The Paper sheet name, shown in the gallery's page list.
@@ -107,6 +113,9 @@ impl GallerySheet {
             Self::Table => "Table header + Table row",
             Self::Toast => "Toast",
             Self::SplitterAndScroll => "Splitter + scroll",
+            Self::CornerButton => "Corner buttons",
+            Self::KeyGlyphs => "Key glyphs",
+            Self::ConfirmPopover => "Popover · Confirm",
         }
     }
 
@@ -141,6 +150,9 @@ impl GallerySheet {
             Self::Table => "table",
             Self::Toast => "toast",
             Self::SplitterAndScroll => "splitter_and_scroll",
+            Self::CornerButton => "corner_button",
+            Self::KeyGlyphs => "key_glyphs",
+            Self::ConfirmPopover => "confirm_popover",
         }
     }
 
@@ -174,6 +186,9 @@ impl GallerySheet {
             Self::Table => TableSheet::show(ui, state),
             Self::Toast => ToastSheet::show(ui, state),
             Self::SplitterAndScroll => SplitterAndScrollSheet::show(ui, state),
+            Self::CornerButton => CornerButtonSheet::show(ui, state),
+            Self::KeyGlyphs => KeyGlyphsSheet::show(ui, state),
+            Self::ConfirmPopover => ConfirmPopoverSheet::show(ui, state),
         }
     }
 }

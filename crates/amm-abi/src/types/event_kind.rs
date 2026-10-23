@@ -25,4 +25,7 @@ pub enum AmmEventKind {
     ScreenshotWritten,
     /// Since 1.4. The person clicked the mod's menu entry whose id is in `code`.
     MenuEntryClicked,
+    /// Since 1.5. The person picked another language. Only a mod that has called `locale` gets it; the mod calls
+    /// `locale` again.
+    LocaleChanged,
 }

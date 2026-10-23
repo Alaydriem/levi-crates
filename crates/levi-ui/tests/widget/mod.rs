@@ -4,6 +4,8 @@ mod button;
 mod checkbox;
 mod chip;
 mod colour_field;
+mod confirm_popover;
+mod corner_button;
 mod drag_field;
 mod dropdown;
 mod empty_state;

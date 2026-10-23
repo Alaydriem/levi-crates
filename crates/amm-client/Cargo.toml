@@ -8,7 +8,7 @@ autotests = false
 
 [features]
 default = ["egui"]
-egui = ["dep:egui", "dep:studio-ui", "dep:crossbeam-channel", "amm-core/egui"]
+egui = ["dep:egui", "dep:levi-ui", "dep:levi-i18n", "dep:crossbeam-channel", "amm-core/egui"]
 test-support = []
 
 [[test]]
@@ -21,7 +21,8 @@ workspace = true
 [dependencies]
 amm-abi.workspace = true
 amm-core.workspace = true
-studio-ui = { workspace = true, optional = true }
+levi-ui = { workspace = true, optional = true }
+levi-i18n = { workspace = true, optional = true }
 egui = { workspace = true, optional = true }
 crossbeam-channel = { workspace = true, optional = true }
 curia.workspace = true

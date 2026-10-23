@@ -10,18 +10,32 @@ autotests = false
 name = "integration"
 path = "tests/integration.rs"
 
+[[example]]
+# not "gallery": levi-ui's gallery example used that name first
+name = "studio_gallery"
+path = "examples/studio_gallery/main.rs"
+required-features = ["gallery"]
+
+[[example]]
+# not "i18n_extract": levi-ui's example of that name would link the same .exe
+name = "studio_i18n_extract"
+path = "examples/studio_i18n_extract.rs"
+
 [lints]
 workspace = true
 
 [dependencies]
 egui.workspace = true
+levi-i18n.workspace = true
 levi-ui.workspace = true
 curia.workspace = true
 
+[features]
+# The live component pages: one gallery page per Paper artboard, for the gallery example and the snapshot tests
+gallery = ["levi-ui/gallery"]
+
 [dev-dependencies]
 eframe.workspace = true
-image.workspace = true
-
-[[example]]
-name = "gallery"
-path = "examples/gallery/main.rs"
+egui_kittest = { workspace = true, features = ["snapshot", "wgpu"] }
+levi-i18n-tool = { path = "../levi-i18n-tool" }
+studio-ui = { path = ".", features = ["gallery"] }

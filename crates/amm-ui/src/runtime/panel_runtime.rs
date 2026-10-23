@@ -2,10 +2,16 @@ use amm_core::services::egui_bridge::{MeshFlattener, RawInputBuilder};
 use amm_core::structs::frame::{FrameInputData, UiEvent, UiEventKind};
 use amm_core::structs::input::Modifiers;
 use amm_core::structs::mesh::MeshBuffers;
+use std::sync::Arc;
+
 use egui::{Context, RawInput, Rect};
-use studio_ui::theme::{FontSource, StudioTheme};
+use levi_i18n::localize::Localizer;
+use levi_ui::font::FontSource;
+use levi_ui::text::UiLocale;
+use levi_ui::theme::Theme;
 
 use crate::model::{PanelAction, PanelController, PanelIntent, PanelModel};
+use crate::runtime::PanelLocale;
 use crate::views::PanelLayout;
 
 /// The manager's own egui pass: the panel, the toasts and the menu button. It owns the
@@ -14,6 +20,8 @@ use crate::views::PanelLayout;
 /// and applies the returned actions.
 pub struct PanelRuntime {
     fonts: FontSource,
+    // the panel's words in the manager's language; set again on every new context
+    localizer: Arc<Localizer>,
     ctx: Context,
     builder: RawInputBuilder,
     controller: PanelController,
@@ -27,10 +35,13 @@ pub struct PanelRuntime {
 impl PanelRuntime {
     const ESCAPE: u32 = 0x1B;
 
-    pub fn new(fonts: FontSource) -> Self {
+    /// `locale` is the manager's language code: empty for English, `en_XA` for the pseudo-locale.
+    pub fn new(fonts: FontSource, locale: &str) -> Self {
+        let localizer = PanelLocale::localizer(locale);
         Self {
             fonts,
-            ctx: Self::context(fonts),
+            ctx: Self::context(fonts, &localizer),
+            localizer,
             builder: RawInputBuilder::new(),
             controller: PanelController::new(),
             events: Vec::new(),
@@ -71,7 +82,13 @@ impl PanelRuntime {
 
     /// The device dropped every texture: the next pass sends the full font atlas again.
     pub fn textures_lost(&mut self) {
-        self.ctx = Self::context(self.fonts);
+        self.ctx = Self::context(self.fonts, &self.localizer);
+    }
+
+    /// The person picked another language: the next pass draws in it.
+    pub fn set_locale(&mut self, code: &str) {
+        self.localizer = PanelLocale::localizer(code);
+        UiLocale::set(&self.ctx, Arc::clone(&self.localizer));
     }
 
     /// The panel state, for host commands that must follow the panel's rules, such as the toggle
@@ -86,9 +103,10 @@ impl PanelRuntime {
         [rect.min.x * ppp, rect.min.y * ppp, rect.max.x * ppp, rect.max.y * ppp]
     }
 
-    fn context(fonts: FontSource) -> Context {
+    fn context(fonts: FontSource, localizer: &Arc<Localizer>) -> Context {
         let ctx = Context::default();
-        StudioTheme::install(&ctx, fonts);
+        Theme::install(&ctx, fonts);
+        UiLocale::set(&ctx, Arc::clone(localizer));
         ctx
     }
 

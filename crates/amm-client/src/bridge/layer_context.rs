@@ -1,9 +1,14 @@
+use std::sync::Arc;
+
 use amm_abi::types::{AmmCursorShape, AmmFrameOutput, AmmMeshView};
 use amm_core::services::egui_bridge::{MeshFlattener, RawInputBuilder};
 use amm_core::structs::frame::LayerKind;
 use amm_core::structs::mesh::MeshBuffers;
 use egui::{Context, Event, OutputCommand, PlatformOutput, RawInput};
-use studio_ui::theme::{FontSource, StudioTheme};
+use levi_i18n::localize::Localizer;
+use levi_ui::font::FontSource;
+use levi_ui::text::UiLocale;
+use levi_ui::theme::Theme;
 
 use super::ClipboardWorker;
 use crate::link::{FrameHandler, FrameInputView, FrameReply};
@@ -16,10 +21,14 @@ use crate::link::{FrameHandler, FrameInputView, FrameReply};
 pub struct LayerContext {
     layer: LayerKind,
     ctx: Context,
+    // the localizer this context holds now; none on a new context, so the next pass sets it
+    localizer: Option<Arc<Localizer>>,
     builder: RawInputBuilder,
     mesh: MeshBuffers,
     // a text field of this layer had keyboard focus at the end of the last pass
     text_focused: bool,
+    // a new context the handler has not been told about yet
+    fresh: bool,
 }
 
 impl LayerContext {
@@ -29,9 +38,11 @@ impl LayerContext {
         Self {
             layer,
             ctx: Self::context(),
+            localizer: None,
             builder: RawInputBuilder::new(),
             mesh: MeshBuffers::new(),
             text_focused: false,
+            fresh: true,
         }
     }
 
@@ -72,7 +83,29 @@ impl LayerContext {
     /// host lost its textures and after a panic left the context mid-pass.
     pub fn reset(&mut self) {
         self.ctx = Self::context();
+        self.localizer = None;
         self.text_focused = false;
+        self.fresh = true;
+    }
+
+    /// True once for each new context: the first time it is asked after `new` or `reset`.
+    pub fn take_fresh(&mut self) -> bool {
+        std::mem::replace(&mut self.fresh, false)
+    }
+
+    /// The layer's egui context.
+    pub fn context_ref(&self) -> &Context {
+        &self.ctx
+    }
+
+    /// The localizer the layer's widgets resolve their text with in the next pass. It is put into the context only
+    /// when it is not the one the context holds.
+    pub fn use_localizer(&mut self, localizer: Arc<Localizer>) {
+        if self.localizer.as_ref().is_some_and(|held| Arc::ptr_eq(held, &localizer)) {
+            return;
+        }
+        UiLocale::set(&self.ctx, Arc::clone(&localizer));
+        self.localizer = Some(localizer);
     }
 
     // Gives a pasted text that came back to the focused field, and asks for one on Ctrl+V. Both need a field
@@ -101,7 +134,7 @@ impl LayerContext {
 
     fn context() -> Context {
         let ctx = Context::default();
-        StudioTheme::install(&ctx, Self::FONTS);
+        Theme::install(&ctx, Self::FONTS);
         ctx
     }
 

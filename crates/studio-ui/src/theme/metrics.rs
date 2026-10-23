@@ -1,3 +1,4 @@
+//! Old studio-ui theme. Kept until DejaVu (Plan 08) moves to levi-ui; its frame handler installs it.
 // radii, sizes and the spacing grid of the Studio Dark look, in points
 pub struct Metrics;
 

@@ -1,81 +1,59 @@
-use egui::{Align, Align2, Layout, Painter, Rect, Ui, UiBuilder, pos2, vec2};
-use studio_ui::theme::{Icon, Metrics, StudioPalette, Typeface};
-use studio_ui::widgets::{Chip, ChipStyle, Draw, IconButton};
-
 use amm_core::structs::write::SaveStatus;
+use egui::Ui;
+use levi_i18n::text::{Args, Text, UserText};
+use levi_ui::icon::Icon;
+use levi_ui::widget::{Chip, ChipKind, ChipTone, IconButton, PageHeader, PageHeaderLead};
 
+use crate::AmmMessage;
 use crate::model::{PanelAction, PanelIntent, PanelModel};
 
-/// The panel's top row: title, mod counts, LeviLamina version, the save status and close. Edits save
-/// on their own, so the status says "Saving..." while a save waits, "Saved" just after it goes out and
-/// "Save failed" when the writer refused it.
+/// The panel's top bar, the panel form of the page header: the studio name over "Mod Manager", the
+/// mod counts and the LeviLamina version, then the save status and close. Edits save on their own,
+/// so the status says "Saving…" while a save waits, "Saved" just after it goes out and "Save failed"
+/// when the writer refused it.
 pub struct HeaderView;
 
 impl HeaderView {
-    const BADGE: f32 = 36.0;
-
-    /// The height of the caps line over the title line, with a small gap.
-    pub fn height(painter: &Painter) -> f32 {
-        Draw::line_height(painter, &Typeface::section())
-            + Draw::line_height(painter, &Typeface::title())
-            + Metrics::GAP_S
+    /// The bar's height, which does not change with its text.
+    pub fn height() -> f32 {
+        Self::bar().height()
     }
 
-    pub fn show(ui: &mut Ui, rect: Rect, model: &PanelModel, out: &mut Vec<PanelIntent>) {
-        let painter = ui.painter().clone();
-        let badge = Rect::from_center_size(
-            pos2(rect.left() + Self::BADGE * 0.5, rect.center().y),
-            vec2(Self::BADGE, Self::BADGE),
-        );
-        Draw::fill(&painter, badge, Metrics::RADIUS_CONTROL + 2, StudioPalette::ACCENT_SOFT);
-        Draw::icon(&painter, badge.center(), Icon::APPS, Typeface::ICON_BADGE, StudioPalette::ACCENT_HOVER);
-        let x = badge.right() + Metrics::GAP_M;
-        let caps_height = Draw::line_height(&painter, &Typeface::section());
-        let title_height = Draw::line_height(&painter, &Typeface::title());
-        // the caps line sits on the title line and the pair is centred in the header
-        let y = rect.center().y - (caps_height + title_height) * 0.5 + caps_height;
-        Draw::caps(&painter, pos2(x, y), Align2::LEFT_BOTTOM, "Alaydriem", StudioPalette::TEXT_FAINT);
-        let title =
-            Draw::text(&painter, pos2(x, y), Align2::LEFT_TOP, "Mod Manager", Typeface::title(), StudioPalette::TEXT);
-        let summary = format!(
-            "{} mods installed  \u{b7}  {} enabled  \u{b7}  LeviLamina {}",
-            model.mod_count(),
-            model.enabled_count(),
-            model.levilamina_version()
-        );
-        Draw::text(
-            &painter,
-            pos2(title.right() + 14.0, title.center().y + 1.0),
-            Align2::LEFT_CENTER,
-            &summary,
-            Typeface::help(),
-            StudioPalette::TEXT_DIM,
-        );
-        let right = Rect::from_min_max(pos2(rect.center().x, rect.top()), rect.max);
-        ui.scope_builder(UiBuilder::new().max_rect(right).layout(Layout::right_to_left(Align::Center)), |ui| {
-            ui.spacing_mut().item_spacing.x = Metrics::GAP_S;
-            if IconButton::show(ui, Icon::CLOSE, Typeface::ICON_SIZE).clicked() {
-                out.push(PanelIntent::Action(PanelAction::Close));
-            }
-            ui.add_space(Metrics::GAP_S);
-            if let Some((label, style)) = Self::status(model.save_status()) {
-                Self::status_chip(ui, label, style);
-            }
-        });
+    pub fn show(ui: &mut Ui, model: &PanelModel, out: &mut Vec<PanelIntent>) {
+        let enabled = u64::try_from(model.enabled_count()).unwrap_or(u64::MAX);
+        let installed = u64::try_from(model.mod_count()).unwrap_or(u64::MAX);
+        let version = UserText::from_model(model.levilamina_version().to_owned());
+        let meta = vec![
+            Text::plural(AmmMessage::ModsInstalled, installed, Args::new()),
+            Text::plural(AmmMessage::ModsEnabled, enabled, Args::new()),
+            Text::format(AmmMessage::LeviLaminaVersion, Args::new().user("version", version)),
+        ];
+        let status = Self::status(model.save_status());
+        Self::bar()
+            .meta(meta)
+            .trailing(|ui| {
+                if IconButton::new(Icon::Close).show(ui).clicked() {
+                    out.push(PanelIntent::Action(PanelAction::Close));
+                }
+                if let Some(chip) = status {
+                    chip.show(ui);
+                }
+            })
+            .show(ui);
     }
 
-    fn status(status: SaveStatus) -> Option<(&'static str, ChipStyle)> {
+    fn bar<'a>() -> PageHeader<'a> {
+        PageHeader::new(PageHeaderLead::Tile(Icon::Apps, ChipTone::Accent), Text::message(AmmMessage::ModManager))
+            .eyebrow(Text::message(AmmMessage::Alaydriem))
+    }
+
+    fn status(status: SaveStatus) -> Option<Chip> {
+        let chip = |tone, message| Chip::new(ChipKind::Display(tone), Text::message(message));
         match status {
             SaveStatus::Idle => None,
-            SaveStatus::Saving => Some(("Saving\u{2026}", ChipStyle::NEUTRAL)),
-            SaveStatus::Saved => Some(("Saved", ChipStyle::SUCCESS.with_icon(Icon::CHECK))),
-            SaveStatus::Failed => Some(("Save failed", ChipStyle::WARNING.with_icon(Icon::WARNING))),
+            SaveStatus::Saving => Some(chip(ChipTone::Outline, AmmMessage::Saving)),
+            SaveStatus::Saved => Some(chip(ChipTone::Success, AmmMessage::Saved).icon(Icon::Check)),
+            SaveStatus::Failed => Some(chip(ChipTone::Warning, AmmMessage::SaveFailed).icon(Icon::Warning)),
         }
-    }
-
-    fn status_chip(ui: &mut Ui, label: &str, style: ChipStyle) {
-        let width = Chip::width(ui.painter(), label, style);
-        let (rect, _) = ui.allocate_exact_size(vec2(width, Chip::HEIGHT), egui::Sense::hover());
-        Chip::paint(ui.painter(), rect.left(), rect.center().y, label, style);
     }
 }

@@ -17,6 +17,7 @@ use super::AmmEventKind;
 /// - `ScreenshotWritten`: `code` is the capture sequence, `phase` is 1 when the PNG file is in place and 0 when
 ///   the encode or the write failed, which leaves no file.
 /// - `MenuEntryClicked`: `code` is the id `register_menu_entry` gave the entry.
+/// - `LocaleChanged`: no field; the mod reads the code again with `locale`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AmmEvent {

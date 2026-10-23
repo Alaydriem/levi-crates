@@ -195,7 +195,10 @@ impl<'a> SettingRow<'a> {
             chip.as_ref().map_or(0.0, |chip| chip.desired_width(ctx) + <spacing::M as SpacingToken>::VALUE);
         let label = UiText::resolve(ctx, &self.label);
         let style = TextStyle::new(size, FontFace::Regular);
-        let label = Draw::galley(painter, &label, style, text, TextFit::Wrap((width - chip_width).max(0.0)));
+        // the chip stays beside the label only while the label then fits on one line
+        let chip_below = chip.is_some() && Draw::measure(ctx, &label, style).x + chip_width > width;
+        let label_width = if chip_below { width } else { (width - chip_width).max(0.0) };
+        let label = Draw::galley(painter, &label, style, text, TextFit::Wrap(label_width));
         let dim = <color::TextDim as ColorToken>::VALUE;
         let help = self
             .help
@@ -206,7 +209,7 @@ impl<'a> SettingRow<'a> {
         let note = self.note.as_ref().map(|note| {
             Draw::galley(painter, &UiText::resolve(ctx, note), Self::NOTE, warning, TextFit::Wrap(note_width))
         });
-        RowLines { label, chip, help, note }
+        RowLines { label, chip, chip_below, width, help, note }
     }
 
     // draws or runs the control in `area`; returns an `Other` control's width

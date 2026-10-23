@@ -1,7 +1,7 @@
 use amm_core::services::settings::ColorCodec;
 use amm_core::structs::descriptor::ColorEncoding;
 use egui::Color32;
-use studio_ui::theme::StudioPalette;
+use levi_ui::tokens::{ColorToken, color};
 
 use super::DemoConfig;
 
@@ -23,7 +23,7 @@ impl DemoState {
     pub fn new() -> Self {
         Self {
             config: DemoConfig::default(),
-            accent: StudioPalette::ACCENT,
+            accent: <color::Accent as ColorToken>::VALUE,
             card_visible: false,
             window_open: false,
             show_last_event: true,
@@ -39,7 +39,7 @@ impl DemoState {
         let text = hcl::Value::String(config.card.accent.clone());
         self.accent = match ColorCodec::to_rgba(&text, ColorEncoding::HexString) {
             Some([r, g, b, a]) => Color32::from_rgba_unmultiplied(r, g, b, a),
-            None => StudioPalette::ACCENT,
+            None => <color::Accent as ColorToken>::VALUE,
         };
         self.config = config;
     }

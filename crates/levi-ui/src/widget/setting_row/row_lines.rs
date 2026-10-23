@@ -8,10 +8,15 @@ use crate::tokens::{ColorToken, SpacingToken, color, spacing};
 use crate::widget::Chip;
 
 /// A grown setting row's text column, laid out: the label with an optional chip after its first
-/// line, the help under it, and the note with its icon under that.
+/// line (or on its own line under the label when it has no room there), the help under it, and the
+/// note with its icon under that.
 pub(crate) struct RowLines {
     pub label: Arc<Galley>,
     pub chip: Option<Chip>,
+    /// The chip goes on its own line under the label.
+    pub chip_below: bool,
+    /// The text column's width; the chip is cut to it.
+    pub width: f32,
     pub help: Option<Arc<Galley>>,
     pub note: Option<Arc<Galley>>,
 }
@@ -27,7 +32,8 @@ impl RowLines {
 
     pub fn height(&self) -> f32 {
         let below = [&self.help, &self.note].into_iter().flatten().map(|galley| Self::LINE_GAP + galley.size().y);
-        self.label.size().y + below.sum::<f32>()
+        let chip = if self.chip_below && self.chip.is_some() { Self::LINE_GAP + Chip::height() } else { 0.0 };
+        self.label.size().y + chip + below.sum::<f32>()
     }
 
     pub fn paint(self, painter: &Painter, top_left: Pos2) {
@@ -37,13 +43,19 @@ impl RowLines {
         let mut y = top_left.y + self.label.size().y;
         painter.galley(top_left, self.label, text);
         if let Some(chip) = self.chip {
-            let size = vec2(chip.desired_width(painter.ctx()), Chip::height());
-            let x = top_left.x + first_row + <spacing::M as SpacingToken>::VALUE;
-            chip.paint(
-                painter,
-                Rect::from_min_size(pos2(x, first_centre - size.y / 2.0), size),
-                InteractionState::Rest,
-            );
+            let room =
+                if self.chip_below { self.width } else { self.width - first_row - <spacing::M as SpacingToken>::VALUE };
+            let size = vec2(chip.desired_width(painter.ctx()).min(room.max(Chip::height())), Chip::height());
+            let place = if self.chip_below {
+                y += Self::LINE_GAP;
+                let place = Rect::from_min_size(pos2(top_left.x, y), size);
+                y += size.y;
+                place
+            } else {
+                let x = top_left.x + first_row + <spacing::M as SpacingToken>::VALUE;
+                Rect::from_min_size(pos2(x, first_centre - size.y / 2.0), size)
+            };
+            chip.paint(painter, place, InteractionState::Rest);
         }
         if let Some(help) = self.help {
             y += Self::LINE_GAP;

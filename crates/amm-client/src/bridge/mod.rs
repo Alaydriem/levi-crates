@@ -7,6 +7,7 @@ pub mod clipboard_worker;
 pub mod egui_frame;
 pub mod frame_trampoline;
 pub mod layer_context;
+pub mod locale_slot;
 pub(crate) mod windows_clipboard;
 
 pub use clipboard_backend::ClipboardBackend;
@@ -18,4 +19,5 @@ pub use clipboard_worker::ClipboardWorker;
 pub use egui_frame::EguiFrame;
 pub use frame_trampoline::FrameTrampoline;
 pub use layer_context::LayerContext;
+pub use locale_slot::LocaleSlot;
 pub(crate) use windows_clipboard::WindowsClipboard;

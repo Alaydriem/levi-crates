@@ -1,191 +1,172 @@
 use amm_core::config::{ExclusiveResolution, PairKey, SuspensionResolution};
 use amm_core::services::settings::ChordText;
-use amm_core::structs::clash::{Clash, ClashKind};
-use amm_core::structs::descriptor::Capability;
+use amm_core::structs::clash::{BindRef, Clash, ClashKind};
 use amm_core::structs::registry::ModIndex;
-use egui::{Align, Align2, Layout, Rect, ScrollArea, Sense, Ui, UiBuilder, pos2, vec2};
-use studio_ui::theme::{Icon, Metrics, StudioPalette, Typeface};
-use studio_ui::widgets::{Chip, ChipStyle, Draw, Dropdown, TextButton};
+use egui::{Align, Id, Layout, Margin, Rect, ScrollArea, Ui, pos2, vec2};
+use levi_i18n::text::{Args, Text, UserText};
+use levi_ui::draw::{Corner, Draw, TextStyle, TypeSize};
+use levi_ui::font::FontFace;
+use levi_ui::icon::Icon;
+use levi_ui::tokens::rule::Elevation;
+use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
+use levi_ui::widget::{
+    Banner, BannerTone, ButtonKind, Chip, ChipKind, ChipTone, Dropdown, DropdownOption, PageHeader, PageHeaderLead,
+    ScrollBar, Surface, SurfaceLevel, TextButton,
+};
 
-use crate::model::{CapabilityText, PanelAction, PanelIntent, PanelModel, PanelTab};
-use crate::views::PageHeader;
+use crate::model::{CapabilityText, ModName, PanelAction, PanelIntent, PanelModel, PanelTab};
+use crate::views::{PanelHint, TableCell};
+use crate::{AmmId, AmmMessage};
 
 /// The Conflicts page: exclusive and key clashes under a badged "Conflicts" group, suspensions under
 /// an unbadged "Interactions" group, one card each with its resolution.
 pub struct ConflictsView;
 
 impl ConflictsView {
-    const CARD: f32 = 132.0;
-    // the centre of the kind chip and title line, from the top of the card
-    const TITLE_Y: f32 = 26.0;
-    const DETAIL_TOP: f32 = Self::TITLE_Y + Chip::HEIGHT * 0.5 + Metrics::GAP_M;
-    // from the bottom of the card to the bottom of the mod chips
-    const MODS_BOTTOM: f32 = 12.0;
-    // the space under the detail text for the mod chips
-    const MODS_BAND: f32 = Metrics::GAP_M + Chip::HEIGHT + Self::MODS_BOTTOM;
-    const CONTROL_W: f32 = 250.0;
+    /// Paper: Mod manager screen 05, the space above each group.
+    const GROUP_TOP: f32 = 28.0;
+    /// Paper: Mod manager screen 05, a card's padding: 24 left, 20 right, 18 top and bottom.
+    const CARD_MARGIN: Margin = Margin { left: 24, right: 20, top: 18, bottom: 18 };
+    /// Paper: Mod manager screen 05, the resolution column's width and the gap before it.
+    const RESOLUTION_WIDTH: f32 = 300.0;
+    const COLUMN_GAP: f32 = 32.0;
+    /// Paper: Mod manager screen 05, the open conflict's bar inset from the card's top and bottom.
+    const BAR_INSET: f32 = 14.0;
+    const CAPTION: TextStyle = TextStyle::new(TypeSize::Caption, FontFace::Semibold).tracked();
+    const LABEL: TextStyle = TextStyle::new(TypeSize::Caption, FontFace::Regular);
+    const TITLE: TextStyle = TextStyle::new(TypeSize::Body, FontFace::Semibold);
 
     pub fn show(ui: &mut Ui, model: &PanelModel, out: &mut Vec<PanelIntent>) {
-        let subtitle =
-            format!("Found from the capability and keybind declarations of {} installed mods", model.mod_count());
-        PageHeader::show(ui, Icon::WARNING, StudioPalette::WARNING, "Conflicts", &subtitle);
-        ui.add_space(Metrics::GAP_L);
+        ui.spacing_mut().item_spacing.y = 0.0;
+        let installed = u64::try_from(model.mod_count()).unwrap_or(u64::MAX);
+        PageHeader::new(PageHeaderLead::Tile(Icon::Warning, ChipTone::Warning), Text::message(AmmMessage::Conflicts))
+            .subtitle(Text::plural(AmmMessage::ConflictsSubtitle, installed, Args::new()))
+            .show(ui);
         let report = model.clash_report();
-        ScrollArea::vertical().id_salt("amm.conflicts").auto_shrink([false, false]).show(ui, |ui| {
-            Self::group_title(ui, "Conflicts", Some(report.conflict_count()));
+        let area = ScrollArea::vertical().id_salt(AmmId::Conflicts).auto_shrink([false, false]);
+        ScrollBar::show(ui, area, false, |ui| {
+            ui.spacing_mut().item_spacing.y = <spacing::M as SpacingToken>::VALUE;
+            ui.add_space(Self::GROUP_TOP - <spacing::M as SpacingToken>::VALUE);
+            Self::group_title(ui, AmmMessage::ConflictsTitle, report.conflict_count());
             if report.conflicts.is_empty() {
-                Self::quiet(ui, "No conflicts. The declarations of the installed mods do not clash.");
+                Banner::new(BannerTone::Success, Text::message(AmmMessage::NoConflicts)).show(ui);
             }
             for (position, clash) in report.conflicts.iter().enumerate() {
                 Self::card(ui, model, clash, position, out);
-                ui.add_space(Metrics::GAP_S + 2.0);
             }
             if report.truncated {
-                Self::quiet(ui, "More key clashes exist than the panel lists. Rebind keys to see the rest.");
+                Banner::new(BannerTone::Info, Text::message(AmmMessage::MoreKeyClashes)).show(ui);
             }
-            ui.add_space(Metrics::GAP_L);
-            Self::group_title(ui, "Interactions", None);
+            ui.add_space(Self::GROUP_TOP - <spacing::M as SpacingToken>::VALUE);
+            Self::group_title(ui, AmmMessage::InteractionsTitle, 0);
             if report.interactions.is_empty() {
-                Self::quiet(ui, "No interactions between the installed mods.");
+                Banner::new(BannerTone::Success, Text::message(AmmMessage::NoInteractions)).show(ui);
             }
             for (position, clash) in report.interactions.iter().enumerate() {
                 Self::card(ui, model, clash, report.conflicts.len() + position, out);
-                ui.add_space(Metrics::GAP_S + 2.0);
             }
         });
     }
 
-    fn group_title(ui: &mut Ui, title: &str, badge: Option<usize>) {
-        let height = Draw::line_height(ui.painter(), &Typeface::section()).max(Chip::HEIGHT) + 4.0;
-        let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
-        let painter = ui.painter();
-        let caps = Draw::caps(
-            painter,
-            pos2(rect.left() + 2.0, rect.center().y),
-            Align2::LEFT_CENTER,
-            title,
-            StudioPalette::TEXT_FAINT,
-        );
-        if let Some(count) = badge.filter(|count| *count > 0) {
-            Chip::paint(
-                painter,
-                caps.right() + 8.0,
-                rect.center().y,
-                &count.to_string(),
-                ChipStyle::WARNING.with_icon(Icon::WARNING),
-            );
-        }
-        ui.add_space(4.0);
-    }
-
-    fn quiet(ui: &mut Ui, text: &str) {
-        let width = ui.available_width() - 8.0;
-        let height = Draw::line_height(ui.painter(), &Typeface::help()) + 2.0 * Metrics::GAP_M;
-        let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
-        let painter = ui.painter();
-        Draw::fill(painter, rect, Metrics::RADIUS_PANEL - 2, StudioPalette::BG_PANEL);
-        Draw::outline(painter, rect, Metrics::RADIUS_PANEL - 2, 1.0, StudioPalette::LINE);
-        Draw::icon(
-            painter,
-            pos2(rect.left() + 22.0, rect.center().y),
-            Icon::CHECK,
-            Typeface::ICON_SIZE,
-            StudioPalette::SUCCESS,
-        );
-        Draw::text(
-            painter,
-            pos2(rect.left() + 42.0, rect.center().y),
-            Align2::LEFT_CENTER,
-            text,
-            Typeface::help(),
-            StudioPalette::TEXT_DIM,
-        );
-        ui.add_space(Metrics::GAP_S);
+    // the group's caps title, with a warning chip of `count` when it is above 0
+    fn group_title(ui: &mut Ui, title: AmmMessage, count: usize) {
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = <spacing::S as SpacingToken>::VALUE;
+            TableCell::text(ui, &Text::message(title), Self::CAPTION, <color::TextFaint as ColorToken>::VALUE);
+            if count > 0 {
+                let count = Text::user(UserText::from_model(count.to_string()));
+                Chip::new(ChipKind::Display(ChipTone::Warning), count).icon(Icon::Warning).show(ui);
+            }
+        });
     }
 
     fn card(ui: &mut Ui, model: &PanelModel, clash: &Clash, position: usize, out: &mut Vec<PanelIntent>) {
-        let width = ui.available_width() - 8.0;
-        let wrap = width - Self::CONTROL_W - 60.0;
-        let detail =
-            ui.painter().layout(Self::detail(model, &clash.kind), Typeface::help(), StudioPalette::TEXT_DIM, wrap);
-        let height = (Self::DETAIL_TOP + detail.size().y + Self::MODS_BAND).max(Self::CARD);
-        let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
-        let painter = ui.painter().clone();
-        Draw::fill(&painter, rect, Metrics::RADIUS_PANEL - 2, StudioPalette::BG_PANEL);
-        Draw::outline(&painter, rect, Metrics::RADIUS_PANEL - 2, 1.0, StudioPalette::LINE);
-        let is_conflict = !matches!(clash.kind, ClashKind::Suspension { .. });
-        let open = is_conflict && !clash.reviewed;
-        let bar_colour = if open { StudioPalette::WARNING } else { StudioPalette::LINE_STRONG };
-        Draw::fill(
-            &painter,
-            Rect::from_min_size(pos2(rect.left(), rect.top() + 12.0), vec2(3.0, rect.height() - 24.0)),
-            2,
-            bar_colour,
-        );
-        let x = rect.left() + 20.0;
-        let (kind_label, kind_style) = Self::kind(&clash.kind);
-        let kind = Chip::paint(&painter, x, rect.top() + Self::TITLE_Y, kind_label, kind_style);
-        let title = Draw::text(
-            &painter,
-            pos2(kind.right() + 10.0, kind.center().y),
-            Align2::LEFT_CENTER,
-            &Self::title(model, &clash.kind),
-            Typeface::body_strong(),
-            StudioPalette::TEXT,
-        );
-        if is_conflict {
-            let (label, style) = if clash.reviewed {
-                ("Resolved", ChipStyle::SUCCESS.with_icon(Icon::CHECK))
-            } else {
-                ("Needs review", ChipStyle::WARNING.with_icon(Icon::WARNING))
-            };
-            Chip::paint(&painter, title.right() + 10.0, kind.center().y, label, style);
+        let open = !matches!(clash.kind, ClashKind::Suspension { .. }) && !clash.reviewed;
+        let frame = Surface::frame(SurfaceLevel::Panel, Elevation::Flat).inner_margin(Self::CARD_MARGIN);
+        let rect = frame
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                let left = (ui.available_width() - Self::RESOLUTION_WIDTH - Self::COLUMN_GAP).max(0.0);
+                ui.horizontal_top(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    ui.allocate_ui_with_layout(vec2(left, 0.0), Layout::top_down(Align::Min), |ui| {
+                        ui.set_width(left);
+                        Self::body(ui, model, clash);
+                    });
+                    ui.add_space(Self::COLUMN_GAP);
+                    ui.allocate_ui_with_layout(vec2(Self::RESOLUTION_WIDTH, 0.0), Layout::top_down(Align::Min), |ui| {
+                        ui.set_width(Self::RESOLUTION_WIDTH);
+                        ui.spacing_mut().item_spacing.y = <spacing::S as SpacingToken>::VALUE;
+                        let caption = Text::message(AmmMessage::ResolutionTitle);
+                        TableCell::text(ui, &caption, Self::CAPTION, <color::TextFaint as ColorToken>::VALUE);
+                        Self::resolution(ui, model, &clash.kind, position, out);
+                    });
+                });
+            })
+            .response
+            .rect;
+        if open {
+            let bar = Rect::from_min_max(
+                pos2(rect.left(), rect.top() + Self::BAR_INSET),
+                pos2(rect.left() + <spacing::Indicator as SpacingToken>::VALUE, rect.bottom() - Self::BAR_INSET),
+            );
+            Draw::fill(ui.painter(), bar, Corner::Full, <color::Warning as ColorToken>::VALUE);
         }
-        painter.galley(pos2(x, rect.top() + Self::DETAIL_TOP), detail, StudioPalette::TEXT_DIM);
-        let mods_y = rect.bottom() - Self::MODS_BOTTOM - Chip::HEIGHT * 0.5;
-        Draw::text(&painter, pos2(x, mods_y), Align2::LEFT_CENTER, "Mods", Typeface::note(), StudioPalette::TEXT_FAINT);
-        let mut mx = x + 52.0;
-        let (a, b) = Self::mods(&clash.kind);
-        for index in [a, b] {
-            mx = Chip::paint(&painter, mx, mods_y, model.display_name(index), ChipStyle::NEUTRAL).right() + 4.0;
-        }
-        let control = Rect::from_min_max(
-            pos2(rect.right() - 18.0 - Self::CONTROL_W, rect.top() + 18.0),
-            pos2(rect.right() - 18.0, rect.bottom() - 14.0),
-        );
-        let caps = Draw::caps(
-            &painter,
-            pos2(control.left(), control.top() + 6.0),
-            Align2::LEFT_TOP,
-            "Resolution",
-            StudioPalette::TEXT_FAINT,
-        );
-        let area = Rect::from_min_max(pos2(control.left(), caps.bottom() + Metrics::GAP_S), control.max);
-        let ui = &mut ui.new_child(UiBuilder::new().max_rect(area).layout(Layout::top_down(Align::Min)));
-        ui.push_id(("amm.resolution", position), |ui| Self::resolution(ui, model, &clash.kind, out));
     }
 
-    fn resolution(ui: &mut Ui, model: &PanelModel, kind: &ClashKind, out: &mut Vec<PanelIntent>) {
+    // the kind chip, title and status chip; the detail; the two mods
+    fn body(ui: &mut Ui, model: &PanelModel, clash: &Clash) {
+        ui.spacing_mut().item_spacing.y = <spacing::M as SpacingToken>::VALUE;
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing.x = <spacing::M as SpacingToken>::VALUE;
+            Self::kind(&clash.kind).show(ui);
+            TableCell::text(ui, &Self::title(model, &clash.kind), Self::TITLE, <color::Text as ColorToken>::VALUE);
+            if !matches!(clash.kind, ClashKind::Suspension { .. }) {
+                let status = if clash.reviewed {
+                    Chip::new(ChipKind::Display(ChipTone::Success), Text::message(AmmMessage::Resolved))
+                        .icon(Icon::Check)
+                } else {
+                    Chip::new(ChipKind::Display(ChipTone::Warning), Text::message(AmmMessage::NeedsReview))
+                        .icon(Icon::Warning)
+                };
+                status.show(ui);
+            }
+        });
+        PanelHint::show_dim(ui, &Self::detail(model, &clash.kind));
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = <spacing::S as SpacingToken>::VALUE;
+            let label = Text::message(AmmMessage::ClashMods);
+            TableCell::text(ui, &label, Self::LABEL, <color::TextFaint as ColorToken>::VALUE);
+            ui.add_space(<spacing::S as SpacingToken>::VALUE);
+            let (a, b) = Self::mods(&clash.kind);
+            for index in [a, b] {
+                Chip::new(ChipKind::Display(ChipTone::Neutral), ModName::text(model, index)).show(ui);
+            }
+        });
+    }
+
+    fn resolution(ui: &mut Ui, model: &PanelModel, kind: &ClashKind, position: usize, out: &mut Vec<PanelIntent>) {
         let book = &model.config().resolutions;
+        let id = Id::unique(AmmId::Resolution(position));
+        let prefer = |index| Text::format(AmmMessage::Prefer, ModName::arg(model, Args::new(), "name", index));
         match *kind {
             ClashKind::Exclusive { capability, a, b } => {
                 let Some((a_id, b_id)) = Self::ids(model, a, b) else { return };
                 let key = PairKey::new(capability, a_id, b_id);
-                let options = [
-                    "Deny the second request".to_string(),
-                    format!("Prefer {}", model.display_name(a)),
-                    format!("Prefer {}", model.display_name(b)),
+                let options = vec![
+                    DropdownOption::new(Text::message(AmmMessage::DenySecond)),
+                    DropdownOption::new(prefer(a)),
+                    DropdownOption::new(prefer(b)),
                 ];
-                let labels: Vec<&str> = options.iter().map(String::as_str).collect();
-                let mut selected = match book.exclusive_for(&key) {
+                let mut selected = Some(match book.exclusive_for(&key) {
                     Some(ExclusiveResolution::Prefer(id)) if id == a_id => 1,
                     Some(ExclusiveResolution::Prefer(_)) => 2,
                     Some(ExclusiveResolution::DenySecond) | None => 0,
-                };
-                if Dropdown::new(&mut selected, &labels).show(ui, Self::CONTROL_W).changed() {
+                });
+                if Dropdown::new(id, &mut selected, options).show(ui, Self::RESOLUTION_WIDTH).changed() {
                     let resolution = match selected {
-                        1 => ExclusiveResolution::Prefer(a_id.to_string()),
-                        2 => ExclusiveResolution::Prefer(b_id.to_string()),
+                        Some(1) => ExclusiveResolution::Prefer(a_id.to_string()),
+                        Some(2) => ExclusiveResolution::Prefer(b_id.to_string()),
                         _ => ExclusiveResolution::DenySecond,
                     };
                     out.push(PanelIntent::Action(PanelAction::SetExclusive(key, resolution)));
@@ -194,20 +175,19 @@ impl ConflictsView {
             ClashKind::Suspension { capability, exclusive, shared } => {
                 let Some((a_id, b_id)) = Self::ids(model, exclusive, shared) else { return };
                 let key = PairKey::new(capability, a_id, b_id);
-                let options = [format!("Suspend {}", model.display_name(shared)), "Coexist".to_string()];
-                let labels: Vec<&str> = options.iter().map(String::as_str).collect();
-                let mut selected = usize::from(book.suspension_for(&key) == Some(&SuspensionResolution::Coexist));
-                if Dropdown::new(&mut selected, &labels).show(ui, Self::CONTROL_W).changed() {
+                let suspend = Text::format(AmmMessage::Suspend, ModName::arg(model, Args::new(), "name", shared));
+                let options =
+                    vec![DropdownOption::new(suspend), DropdownOption::new(Text::message(AmmMessage::Coexist))];
+                let mut selected = Some(usize::from(book.suspension_for(&key) == Some(&SuspensionResolution::Coexist)));
+                if Dropdown::new(id, &mut selected, options).show(ui, Self::RESOLUTION_WIDTH).changed() {
                     let resolution =
-                        if selected == 1 { SuspensionResolution::Coexist } else { SuspensionResolution::Suspend };
+                        if selected == Some(1) { SuspensionResolution::Coexist } else { SuspensionResolution::Suspend };
                     out.push(PanelIntent::Action(PanelAction::SetSuspension(key, resolution)));
                 }
             }
             ClashKind::Key { a, .. } => {
-                ui.label(
-                    egui::RichText::new("Rebind one of the keys").font(Typeface::help()).color(StudioPalette::TEXT_DIM),
-                );
-                if TextButton::secondary(ui, "Open keybinds").clicked() {
+                PanelHint::show_dim(ui, &Text::message(AmmMessage::RebindOneKey));
+                if TextButton::new(ButtonKind::Outline, Text::message(AmmMessage::OpenKeybinds)).show(ui).clicked() {
                     out.push(PanelIntent::Action(PanelAction::Select(Some(a.mod_index))));
                     out.push(PanelIntent::Action(PanelAction::SelectTab(PanelTab::Keybinds)));
                 }
@@ -227,59 +207,56 @@ impl ConflictsView {
         }
     }
 
-    fn kind(kind: &ClashKind) -> (&'static str, ChipStyle) {
-        match kind {
-            ClashKind::Exclusive { .. } => ("Exclusive", ChipStyle::WARNING.with_icon(Icon::LOCK)),
-            ClashKind::Suspension { .. } => ("Suspension", ChipStyle::ACCENT.with_icon(Icon::LOCK)),
-            ClashKind::Key { .. } => ("Keybind", ChipStyle::DANGER.with_icon(Icon::KEYBOARD)),
-        }
+    fn kind(kind: &ClashKind) -> Chip {
+        let (tone, message, icon) = match kind {
+            ClashKind::Exclusive { .. } => (ChipTone::Warning, AmmMessage::Exclusive, Icon::Lock),
+            ClashKind::Suspension { .. } => (ChipTone::Accent, AmmMessage::Suspension, Icon::Lock),
+            ClashKind::Key { .. } => (ChipTone::Danger, AmmMessage::Keybind, Icon::Keyboard),
+        };
+        Chip::new(ChipKind::Display(tone), Text::message(message)).icon(icon)
     }
 
-    fn title(model: &PanelModel, kind: &ClashKind) -> String {
+    fn title(model: &PanelModel, kind: &ClashKind) -> Text {
+        let pair = |capability, first, second| {
+            let args = Args::new().message("capability", CapabilityText::name(capability));
+            let args = ModName::arg(model, ModName::arg(model, args, "first", first), "second", second);
+            Text::format(AmmMessage::ClashPair, args)
+        };
         match *kind {
-            ClashKind::Exclusive { capability, a, b } => {
-                format!("{}: {} and {}", CapabilityText::name(capability), model.display_name(a), model.display_name(b))
+            ClashKind::Exclusive { capability, a, b } => pair(capability, a, b),
+            ClashKind::Suspension { capability, exclusive, shared } => pair(capability, exclusive, shared),
+            ClashKind::Key { chord, .. } => {
+                let chord = UserText::from_model(ChordText::format(chord));
+                Text::format(AmmMessage::BoundTwice, Args::new().user("chord", chord))
             }
-            ClashKind::Suspension { capability, exclusive, shared } => format!(
-                "{}: {} and {}",
-                CapabilityText::name(capability),
-                model.display_name(exclusive),
-                model.display_name(shared)
-            ),
-            ClashKind::Key { chord, .. } => format!("{} is bound twice", ChordText::format(chord)),
         }
     }
 
-    fn detail(model: &PanelModel, kind: &ClashKind) -> String {
+    fn detail(model: &PanelModel, kind: &ClashKind) -> Text {
         match *kind {
-            ClashKind::Exclusive { capability, .. } => format!(
-                "Both mods claim {} as exclusive. Only one of them can hold it at a time.",
-                CapabilityText::name(capability)
+            ClashKind::Exclusive { capability, .. } => Text::format(
+                AmmMessage::ExclusiveDetail,
+                Args::new().message("capability", CapabilityText::name(capability)),
             ),
             ClashKind::Suspension { capability, exclusive, shared } => {
-                Self::suspension_detail(model, capability, exclusive, shared)
+                let args = Args::new().message("capability", CapabilityText::name(capability));
+                let args = ModName::arg(model, ModName::arg(model, args, "holder", exclusive), "other", shared);
+                Text::format(AmmMessage::SuspensionDetail, args)
             }
             ClashKind::Key { a, b, .. } => {
-                let label = |bind: amm_core::structs::clash::BindRef| {
-                    model.keybind(bind.mod_index, bind.action).map_or("a keybind", |decl| decl.label.as_str())
-                };
-                format!(
-                    "{} in {} and {} in {} use the same chord. Both can be live at the same time.",
-                    label(a),
-                    model.display_name(a.mod_index),
-                    label(b),
-                    model.display_name(b.mod_index)
-                )
+                let args = Self::action(model, Args::new(), "first_action", a);
+                let args = Self::action(model, args, "second_action", b);
+                let args = ModName::arg(model, ModName::arg(model, args, "first", a.mod_index), "second", b.mod_index);
+                Text::format(AmmMessage::KeyClashDetail, args)
             }
         }
     }
 
-    fn suspension_detail(model: &PanelModel, capability: Capability, exclusive: ModIndex, shared: ModIndex) -> String {
-        let name = CapabilityText::name(capability);
-        format!(
-            "{} claims {name} as exclusive. While it holds {name}, {} stops its shared use and its {name} keys are blocked.",
-            model.display_name(exclusive),
-            model.display_name(shared)
-        )
+    // a keybind's name in placeholder `name`, or "a keybind" when the mod no longer declares it
+    fn action(model: &PanelModel, args: Args, name: &'static str, bind: BindRef) -> Args {
+        match model.keybind(bind.mod_index, bind.action) {
+            Some(decl) => args.user(name, UserText::from_model(decl.label.clone())),
+            None => args.message(name, AmmMessage::AKeybind),
+        }
     }
 }

@@ -2,6 +2,8 @@ use amm_core::structs::descriptor::{ApplyMode, FieldKind, SettingField};
 use amm_core::structs::registry::ModIndex;
 use amm_ui::model::PanelModel;
 use amm_ui::views::ValueText;
+use levi_i18n::localize::Localizer;
+use levi_ui::widget::DragUnit;
 
 use crate::support::{DEMO, FourMods, MINIMAP_SETTINGS};
 
@@ -56,18 +58,21 @@ fn a_word_unit_is_set_apart_from_the_number_by_a_space() {
 }
 
 #[test]
-fn the_widest_texts_of_a_float_are_at_its_min_and_its_max() {
-    let speed = float_field(-16.0, 400.0, 0.5, Some("blocks/s"));
-
-    assert_eq!(ValueText::bounds(&speed), Some(["-16.0 blocks/s".to_string(), "400.0 blocks/s".to_string()]));
+fn a_one_character_unit_joins_and_a_word_unit_is_spaced() {
+    assert!(matches!(ValueText::unit(Some("x")), DragUnit::Joined(_)));
+    assert!(matches!(ValueText::unit(Some("%")), DragUnit::Joined(_)));
+    assert!(matches!(ValueText::unit(Some("blocks/s")), DragUnit::Text(_)));
+    assert!(matches!(ValueText::unit(None), DragUnit::None));
 }
 
 #[test]
-fn an_int_has_bounds_and_a_toggle_has_none() {
+fn an_on_off_change_names_the_value_in_words() {
     let mods = FourMods::new(DEMO);
     let rows = field(&mods, mods.minimap, "card.rows");
-    let toggle = SettingField { kind: FieldKind::Bool, ..rows.clone() };
+    let toggle = SettingField { kind: FieldKind::Bool, ..rows };
+    let english = Localizer::english();
 
-    assert!(ValueText::bounds(&rows).is_some());
-    assert_eq!(ValueText::bounds(&toggle), None);
+    let note = ValueText::changed_in_game(&toggle, &hcl::Value::from(true));
+
+    assert_eq!(note.resolve(&english), "Changed in game to on");
 }

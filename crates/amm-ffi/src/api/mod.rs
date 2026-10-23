@@ -2,6 +2,7 @@ pub mod capture;
 pub mod events;
 pub mod input_query;
 pub mod leases;
+pub mod locale;
 pub mod log;
 pub mod menu;
 pub mod register;
@@ -12,6 +13,7 @@ pub use capture::{amm_held_by_other, amm_request_screenshot, amm_request_screens
 pub use events::amm_poll_events;
 pub use input_query::amm_key_down;
 pub use leases::{amm_acquire, amm_holder, amm_release, amm_set_cursor_mode};
+pub use locale::amm_locale;
 pub use log::amm_log;
 pub use menu::amm_register_menu_entry;
 pub use register::{amm_config_document, amm_register, amm_unregister};

@@ -1,5 +1,18 @@
 use egui::FontFamily;
+use levi_ui::font::FontFace;
 use studio_ui::theme::{FontLoader, FontSource, Typeface};
+
+#[test]
+fn studio_fonts_also_define_the_levi_ui_faces() {
+    // a studio context draws levi-ui widgets too, while the studio moves to levi-ui
+    for source in [FontSource::BuiltIn, FontSource::Embedded] {
+        let defs = FontLoader::definitions(source);
+        for face in [FontFace::Regular, FontFace::Semibold, FontFace::Icons] {
+            let chain = defs.families.get(&face.family());
+            assert!(chain.is_some_and(|c| !c.is_empty()), "{source:?}: {face:?} has no font");
+        }
+    }
+}
 
 #[test]
 fn builtin_source_still_defines_every_named_family() {

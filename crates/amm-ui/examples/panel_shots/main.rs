@@ -1,4 +1,5 @@
-// Writes the manager panel screenshots into a folder, or with --view <n> opens shot n for a look
+// Writes the manager panel screenshots into a folder, or with --view <n> opens shot n for a look.
+// --locale <code> draws them in that language (en_XA for the pseudo-locale).
 mod game_backdrop;
 mod scene;
 mod shot;
@@ -10,12 +11,20 @@ use shot_runner::ShotRunner;
 use shots_app::ShotsApp;
 
 fn main() -> eframe::Result {
-    let args: Vec<String> = std::env::args().collect();
-    let (runner, first) = match (args.get(1).map(String::as_str), args.get(2)) {
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let locale = match args.iter().position(|arg| arg == "--locale") {
+        Some(position) if position + 1 < args.len() => {
+            let code = args.remove(position + 1);
+            args.remove(position);
+            code
+        }
+        _ => String::new(),
+    };
+    let (runner, first) = match (args.first().map(String::as_str), args.get(1)) {
         (Some("--view"), Some(number)) => (None, number.parse::<usize>().unwrap_or(1).saturating_sub(1)),
         (Some(out_dir), _) if out_dir != "--view" => (Some(ShotRunner::new(out_dir.into())), 0),
         _ => {
-            eprintln!("usage: panel_shots <out dir> | --view <shot number>");
+            eprintln!("usage: panel_shots <out dir> | --view <shot number> [--locale <code>]");
             std::process::exit(2);
         }
     };
@@ -36,6 +45,6 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "amm-ui-panel-shots",
         options,
-        Box::new(move |cc| Ok(Box::new(ShotsApp::new(&cc.egui_ctx, scene, runner, first)))),
+        Box::new(move |cc| Ok(Box::new(ShotsApp::new(&cc.egui_ctx, scene, runner, first, &locale)))),
     )
 }

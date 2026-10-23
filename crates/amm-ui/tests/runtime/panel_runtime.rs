@@ -3,7 +3,7 @@ use amm_core::structs::frame::{FrameInputData, MenuScreen, UiEvent, UiEventKind}
 use amm_core::structs::mesh::MeshBuffers;
 use amm_ui::model::{PanelAction, PanelModel, PanelPage, PanelTab, RebindTarget};
 use amm_ui::runtime::PanelRuntime;
-use studio_ui::theme::FontSource;
+use levi_ui::font::FontSource;
 
 use crate::support::{FourMods, MINIMAP, MINIMAP_SETTINGS};
 
@@ -50,7 +50,7 @@ fn render_every_view(minimap: &str) {
         .acquire(mods.minimap, Capability::Hud, 0)
         .unwrap_or_else(|error| panic!("minimap acquires the hud: {error}"));
     mods.manager.set_panel_open(true);
-    let mut runtime = PanelRuntime::new(FontSource::Embedded);
+    let mut runtime = PanelRuntime::new(FontSource::Embedded, "");
     let mut out = MeshBuffers::new();
     let mut frame = 0.0;
     let mut largest = 0;
@@ -94,7 +94,7 @@ fn a_lost_texture_set_sends_the_full_font_atlas_again() {
     let mut mods = FourMods::new(MINIMAP);
     mods.manager.set_panel_open(true);
     let model = PanelModel::new(&mods.manager, "1.4.1", 0);
-    let mut runtime = PanelRuntime::new(FontSource::BuiltIn);
+    let mut runtime = PanelRuntime::new(FontSource::BuiltIn, "");
     let mut out = MeshBuffers::new();
     runtime.run(&input(0.0), &model, &mut out);
     runtime.run(&input(0.1), &model, &mut out);
@@ -107,6 +107,43 @@ fn a_lost_texture_set_sends_the_full_font_atlas_again() {
     assert!(out.deltas.iter().any(|delta| delta.full));
 }
 
+// The vertices of a frame that shows a denied toast. The toast's words are messages, so a pseudo-locale draws
+// more glyphs than English. `prepare` runs on the runtime before the frame.
+fn toast_vertices(locale: &str, prepare: impl FnOnce(&mut PanelRuntime)) -> usize {
+    let mut mods = FourMods::new(MINIMAP);
+    mods.manager
+        .acquire(mods.dejavu, Capability::Camera, 0)
+        .unwrap_or_else(|error| panic!("dejavu acquires the camera: {error}"));
+    mods.manager
+        .acquire(mods.freecam, Capability::Camera, 0)
+        .unwrap_or_else(|error| panic!("freecam asks for the camera: {error}"));
+    let model = PanelModel::new(&mods.manager, "1.4.1", 100);
+    let mut runtime = PanelRuntime::new(FontSource::BuiltIn, locale);
+    let mut out = MeshBuffers::new();
+    runtime.run(&input(0.0), &model, &mut out);
+    prepare(&mut runtime);
+    runtime.run(&input(0.1), &model, &mut out);
+    out.vertex_count()
+}
+
+#[test]
+fn rebuild_keeps_the_locale() {
+    let english = toast_vertices("", |_| {});
+    let pseudo = toast_vertices("en_XA", PanelRuntime::textures_lost);
+
+    assert!(pseudo > english, "en_XA after a rebuild drew {pseudo} vertices, English {english}");
+}
+
+#[test]
+fn set_locale_changes_the_panel() {
+    let english = toast_vertices("", |_| {});
+    let switched = toast_vertices("", |runtime| runtime.set_locale("en_XA"));
+    let back = toast_vertices("en_XA", |runtime| runtime.set_locale(""));
+
+    assert!(switched > english, "set_locale(en_XA) drew {switched} vertices, English {english}");
+    assert_eq!(back, english);
+}
+
 fn key(vk: u32, down: bool, modifiers: u8) -> UiEvent {
     UiEvent { kind: UiEventKind::Key, x: 0.0, y: 0.0, key: vk, modifiers, down, ch: 0 }
 }
@@ -116,7 +153,7 @@ fn a_key_press_during_a_rebind_becomes_the_rebind_action() {
     let mut mods = FourMods::new(MINIMAP);
     mods.manager.set_panel_open(true);
     let model = PanelModel::new(&mods.manager, "1.4.1", 0);
-    let mut runtime = PanelRuntime::new(FontSource::BuiltIn);
+    let mut runtime = PanelRuntime::new(FontSource::BuiltIn, "");
     let mut out = MeshBuffers::new();
     runtime.controller_mut().begin_rebind(RebindTarget::Mod { mod_index: mods.freecam, action: 2 });
     let events = [key(0xA2, true, UiEvent::MOD_CTRL), key(0x4A, true, UiEvent::MOD_CTRL)];
@@ -134,7 +171,7 @@ fn escape_with_a_pending_edit_closes_the_panel_at_once() {
     mods.manager.edit_draft(mods.minimap, "map.zoom", hcl::Value::from(3.0), 0).expect("zoom is a schema field");
     mods.manager.set_panel_open(true);
     let model = PanelModel::new(&mods.manager, "1.4.1", 0);
-    let mut runtime = PanelRuntime::new(FontSource::BuiltIn);
+    let mut runtime = PanelRuntime::new(FontSource::BuiltIn, "");
     let mut out = MeshBuffers::new();
 
     let actions = runtime.run(&input_with(0.0, &[key(0x1B, true, 0)]), &model, &mut out).to_vec();
@@ -149,7 +186,7 @@ fn pointer(kind: UiEventKind, (x, y): (f32, f32), down: bool) -> UiEvent {
 #[test]
 fn the_menu_button_renders_within_the_vertex_budget_while_the_game_shows_its_cursor() {
     let mut mods = FourMods::new(MINIMAP);
-    let mut runtime = PanelRuntime::new(FontSource::Embedded);
+    let mut runtime = PanelRuntime::new(FontSource::Embedded, "");
     let mut out = MeshBuffers::new();
     runtime.run(&input(0.0), &PanelModel::new(&mods.manager, "1.4.1", 0), &mut out);
     let in_play = (out.vertex_count(), runtime.menu_button_rect());
@@ -168,7 +205,7 @@ fn a_click_on_the_menu_button_asks_to_open_the_panel() {
     let mut mods = FourMods::new(MINIMAP);
     mods.manager.set_menu_screen(MenuScreen::Start);
     let model = PanelModel::new(&mods.manager, "1.4.1", 0);
-    let mut runtime = PanelRuntime::new(FontSource::BuiltIn);
+    let mut runtime = PanelRuntime::new(FontSource::BuiltIn, "");
     let mut out = MeshBuffers::new();
     runtime.run(&input(0.0), &model, &mut out);
     let [min_x, min_y, max_x, max_y] = runtime.menu_button_rect().expect("the button is placed");

@@ -41,6 +41,9 @@ pub struct FakeState {
     // (label, mark, screens) of each `register_menu_entry` call, and the id it answers with
     pub menu_entries: Vec<(String, String, u8)>,
     pub menu_entry_id: u16,
+    // The language code `locale` answers with; empty is English. `locale_reads` counts the calls
+    pub locale: &'static str,
+    pub locale_reads: u32,
 }
 
 impl FakeState {
@@ -70,6 +73,8 @@ impl FakeState {
             texture_grant: TextureGrant { bytes: 0, count: 0 },
             menu_entries: Vec::new(),
             menu_entry_id: 1,
+            locale: "",
+            locale_reads: 0,
         }
     }
 

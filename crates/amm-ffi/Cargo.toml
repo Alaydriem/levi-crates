@@ -21,7 +21,7 @@ amm-core = { workspace = true, features = ["egui"] }
 amm-abi.workspace = true
 amm-store.workspace = true
 amm-ui.workspace = true
-studio-ui.workspace = true
+levi-ui.workspace = true
 arc-swap.workspace = true
 curia.workspace = true
 chrono.workspace = true

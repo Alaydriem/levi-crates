@@ -12,4 +12,9 @@ pub trait FrameHandler {
     /// The host lost every texture. The bridge has already reset egui's own textures of every layer; a mod that
     /// uploads its own textures sends them again on its next frame.
     fn textures_lost(&mut self) {}
+
+    /// The bridge made a new egui context for a layer, with the levi-ui theme installed: on the layer's first pass,
+    /// and again when it replaces the context after lost textures or a panic. Called before the context's first
+    /// pass, so a mod that paints with fonts or visuals of its own installs them here.
+    fn new_context(&mut self, _ctx: &Context) {}
 }

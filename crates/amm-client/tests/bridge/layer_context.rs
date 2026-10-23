@@ -2,9 +2,68 @@ use std::sync::{Arc, Mutex};
 
 use amm_abi::types::{AmmFrameInput, AmmStatus};
 use amm_client::bridge::{ClipboardBackend, EguiFrame};
+use amm_client::link::FrameHandler;
 use amm_core::structs::frame::FrameInputData;
+use levi_i18n::localize::Localizer;
+use levi_i18n::message::Message;
+use levi_i18n::service::{LocaleSetting, LocalizationService};
+use levi_ui::LeviUiMessage;
+use levi_ui::text::LeviUiPacks;
 
-use crate::support::{ClipboardPass, ClipboardProbeHandler, FakeTable, FocusAction, FocusProbeHandler, FocusTarget};
+use crate::support::{
+    ClipboardPass, ClipboardProbeHandler, FakeTable, FocusAction, FocusProbeHandler, FocusTarget, LocaleProbeHandler,
+};
+
+// one overlay pass with no events
+fn overlay_pass<H: FrameHandler>(frame: &mut EguiFrame<H>) {
+    let input = AmmFrameInput {
+        width: 640,
+        height: 480,
+        pixels_per_point: 1.0,
+        time_secs: 0.0,
+        events: std::ptr::null(),
+        event_count: 0,
+        allowed_layers: FrameInputData::LAYER_OVERLAY,
+        input_flags: 7,
+    };
+    let mut out = FakeTable::empty_output();
+    // SAFETY: the input has no events, so it points at nothing
+    assert_eq!(unsafe { frame.run(&input, &mut out) }, AmmStatus::Ok);
+}
+
+fn pseudo() -> Arc<Localizer> {
+    let service = LocalizationService::new(vec![(LeviUiMessage::DOMAIN, LeviUiPacks::SOURCE)]);
+    Arc::new(service.load(&LocaleSetting::Pseudo))
+}
+
+#[test]
+fn set_localizer_reaches_a_layer_that_already_ran() {
+    let (handler, seen) = LocaleProbeHandler::new();
+    let mut frame = EguiFrame::new(handler);
+    overlay_pass(&mut frame);
+    let english = seen.borrow().clone();
+
+    frame.locale().set(pseudo());
+    overlay_pass(&mut frame);
+
+    assert_eq!(english, "Close");
+    assert_ne!(*seen.borrow(), "Close");
+}
+
+#[test]
+fn layer_keeps_its_localizer_after_rebuild() {
+    let (handler, seen) = LocaleProbeHandler::new();
+    let mut frame = EguiFrame::new(handler);
+    frame.locale().set(pseudo());
+    overlay_pass(&mut frame);
+    let before = seen.borrow().clone();
+
+    frame.textures_lost();
+    overlay_pass(&mut frame);
+
+    assert_ne!(before, "Close");
+    assert_eq!(*seen.borrow(), before);
+}
 
 fn keyboard_after_pass(frame: &mut EguiFrame<FocusProbeHandler>) -> u8 {
     let input = AmmFrameInput {

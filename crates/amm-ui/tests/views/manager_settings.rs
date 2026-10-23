@@ -1,42 +1,42 @@
-use amm_ui::views::ManagerSettingsView;
-use egui::{Context, LayerId, RawInput, Rect, pos2, vec2};
-use studio_ui::theme::{FontSource, StudioTheme};
-use studio_ui::widgets::{Chip, Toggle};
+use amm_ui::model::{PanelAction, PanelPage};
 
-const LABEL: &str = "Panel toggle";
-const HELP: &str = "Opens and closes this panel from anywhere in the game";
+use crate::support::{FourMods, MINIMAP, PanelHarness};
+
+fn settings(mods: FourMods) -> PanelHarness {
+    let mut harness = PanelHarness::new(mods, "");
+    harness.show_page(PanelPage::ManagerSettings);
+    harness
+}
 
 #[test]
-fn a_settings_row_keeps_its_label_help_and_control_inside_the_row() {
-    let ctx = Context::default();
-    StudioTheme::install(&ctx, FontSource::Embedded);
+fn picking_a_language_sends_an_action() {
+    let mut harness = settings(FourMods::new(MINIMAP));
+    let field = harness.text_rect("English").unwrap_or_else(|| panic!("the language field is painted"));
 
-    let mut output = ctx.run_ui(RawInput::default(), |ui| {
-        let painter = ui.ctx().layer_painter(LayerId::background());
-        let row = Rect::from_min_size(pos2(0.0, 0.0), vec2(760.0, ManagerSettingsView::row_height(&painter)));
-        let chord = Chip::chord_size(&painter, &["Ctrl", "Shift", "F10"]);
-        let toggle = vec2(Toggle::SIZE.0, Toggle::SIZE.1);
+    harness.click(field.center());
+    let option = harness.text_rect("en_XA").unwrap_or_else(|| panic!("no en_XA option in {:?}", harness.texts()));
+    harness.click(option.center());
 
-        for control in [chord, toggle] {
-            let parts = ManagerSettingsView::parts(&painter, row, LABEL, HELP, control);
+    assert!(harness.actions.contains(&PanelAction::SetLanguage("en_XA".to_owned())), "{:?}", harness.actions);
+}
 
-            for (name, rect) in [("label", parts.label), ("help", parts.help), ("control", parts.control)] {
-                assert!(row.contains_rect(rect), "the {name} {rect:?} leaves the row {row:?}");
-            }
-            assert!(
-                parts.label.bottom() <= parts.help.top(),
-                "the label {:?} overlaps the help {:?}",
-                parts.label,
-                parts.help
-            );
-            assert!(
-                parts.help.right() < parts.control.left(),
-                "the help {:?} runs into the control {:?}",
-                parts.help,
-                parts.control
-            );
-        }
-    });
-    // the test has no renderer, so the font atlas upload is dropped on purpose
-    output.textures_delta.clear();
+#[test]
+fn unknown_code_selects_english() {
+    let mut mods = FourMods::new(MINIMAP);
+    mods.manager.set_locale("xx");
+
+    let harness = settings(mods);
+
+    assert!(harness.text_rect("English").is_some(), "the field does not show English: {:?}", harness.texts());
+}
+
+#[test]
+fn a_code_with_spaces_selects_its_language() {
+    // `LocaleSetting::from_code` trims the code, so the panel draws en_XA; the field must say so too
+    let mut mods = FourMods::new(MINIMAP);
+    mods.manager.set_locale(" en_XA ");
+
+    let harness = settings(mods);
+
+    assert!(harness.text_rect("en_XA").is_some(), "the field does not show en_XA: {:?}", harness.texts());
 }

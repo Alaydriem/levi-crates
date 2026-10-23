@@ -142,3 +142,18 @@ fn snapshot_table() {
 fn snapshot_splitter_and_scroll() {
     SheetSnapshot::check(GallerySheet::SplitterAndScroll);
 }
+
+#[test]
+fn snapshot_corner_button() {
+    SheetSnapshot::check(GallerySheet::CornerButton);
+}
+
+#[test]
+fn snapshot_key_glyphs() {
+    SheetSnapshot::check(GallerySheet::KeyGlyphs);
+}
+
+#[test]
+fn snapshot_confirm_popover() {
+    SheetSnapshot::check(GallerySheet::ConfirmPopover);
+}

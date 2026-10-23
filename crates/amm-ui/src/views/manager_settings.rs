@@ -1,133 +1,111 @@
-use amm_core::services::settings::ChordText;
-use egui::{Align2, Painter, Rect, ScrollArea, Sense, Ui, UiBuilder, Vec2, pos2, vec2};
-use studio_ui::theme::{Icon, Metrics, StudioPalette, Typeface};
-use studio_ui::widgets::{Chip, Draw, Toggle};
+use egui::{Id, ScrollArea, Ui};
+use levi_i18n::text::{Args, Text, UserText};
+use levi_ui::draw::{TextStyle, TypeSize};
+use levi_ui::font::FontFace;
+use levi_ui::icon::Icon;
+use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
+use levi_ui::widget::{
+    ChipTone, Dropdown, DropdownOption, PageHeader, PageHeaderLead, ScrollBar, SectionCard, SettingControl, SettingRow,
+};
 
 use crate::model::{PanelAction, PanelIntent, PanelModel};
-use crate::views::{PageHeader, SettingsRowParts};
+use crate::runtime::PanelLocale;
+use crate::views::{KeybindRowView, PanelHint, TableCell};
+use crate::{AmmId, AmmMessage};
 
-/// The Manager settings page: the panel chord, the enabled flag of each mod, and the mod limit the
-/// manager read from its own config at start.
+/// The Manager settings page: the panel chord, the enabled flag of each mod, the mod limit the
+/// manager read from its own config at start, and the language every mod shows its text in.
 pub struct ManagerSettingsView;
 
 impl ManagerSettingsView {
-    const PAD: f32 = 10.0;
-    const TEXT_GAP: f32 = 4.0;
-    const INSET: f32 = 18.0;
+    /// Paper: Mod manager screen 08, the language dropdown's width.
+    const LANGUAGE_WIDTH: f32 = 250.0;
+    const VALUE: TextStyle = TextStyle::new(TypeSize::Body, FontFace::Regular);
 
     pub fn show(ui: &mut Ui, model: &PanelModel, out: &mut Vec<PanelIntent>) {
-        PageHeader::show(
-            ui,
-            Icon::SETTINGS,
-            StudioPalette::ACCENT_HOVER,
-            "Manager settings",
-            "Stored in the manager's config.hcl",
-        );
-        ui.add_space(Metrics::GAP_L);
-        ScrollArea::vertical().id_salt("amm.manager_settings").auto_shrink([false, false]).show(ui, |ui| {
+        ui.spacing_mut().item_spacing.y = 0.0;
+        let lead = PageHeaderLead::Tile(Icon::Settings, ChipTone::Accent);
+        PageHeader::new(lead, Text::message(AmmMessage::ManagerSettings))
+            .subtitle(Text::message(AmmMessage::ManagerSettingsSubtitle))
+            .show(ui);
+        ui.add_space(<spacing::L as SpacingToken>::VALUE);
+        let area = ScrollArea::vertical().id_salt(AmmId::ManagerSettings).auto_shrink([false, false]);
+        ScrollBar::show(ui, area, false, |ui| {
+            ui.spacing_mut().item_spacing.y = 0.0;
+            let gap = <spacing::L as SpacingToken>::VALUE;
             Self::panel(ui, model);
-            ui.add_space(Metrics::GAP_L + 4.0);
+            ui.add_space(gap);
             Self::mods(ui, model, out);
-            ui.add_space(Metrics::GAP_L + 4.0);
+            ui.add_space(gap);
             Self::limits(ui, model);
-            ui.add_space(Metrics::GAP_M);
-            let note = "Limits are read when the game starts. Change them in the manager's config.hcl.";
-            ui.label(egui::RichText::new(note).font(Typeface::help()).color(StudioPalette::TEXT_FAINT));
+            ui.add_space(gap);
+            Self::language(ui, model, out);
+            ui.add_space(<spacing::M as SpacingToken>::VALUE);
+            PanelHint::show(ui, &Text::message(AmmMessage::LimitsNote));
         });
     }
 
-    /// The height of one row: a body label line over a help line, with padding above and below.
-    pub fn row_height(painter: &Painter) -> f32 {
-        let label = Draw::line_height(painter, &Typeface::body());
-        let help = Draw::line_height(painter, &Typeface::help());
-        Self::PAD + label + Self::TEXT_GAP + help + Self::PAD
-    }
-
-    /// The parts of row `row`: the label at the top left, the help under it, and a control of size
-    /// `control` centred on the right.
-    pub fn parts(painter: &Painter, row: Rect, label: &str, help: &str, control: Vec2) -> SettingsRowParts {
-        let x = row.left() + Self::INSET;
-        let label_size = Draw::galley(painter, label, Typeface::body(), StudioPalette::TEXT).size();
-        let help_size = Draw::galley(painter, help, Typeface::help(), StudioPalette::TEXT_DIM).size();
-        let label = Rect::from_min_size(pos2(x, row.top() + Self::PAD), label_size);
-        let help = Rect::from_min_size(pos2(x, label.bottom() + Self::TEXT_GAP), help_size);
-        let control =
-            Rect::from_center_size(pos2(row.right() - Self::INSET - control.x * 0.5, row.center().y), control);
-        SettingsRowParts { label, help, control }
-    }
-
     fn panel(ui: &mut Ui, model: &PanelModel) {
-        let text = ChordText::format(model.config().toggle_chord);
-        let keys: Vec<&str> = text.split('+').collect();
-        let size = Chip::chord_size(ui.painter(), &keys);
-        let frame = Self::frame(ui, "Panel", 1);
-        let parts =
-            Self::row(ui, frame, 0, "Panel toggle", "Opens and closes this panel from anywhere in the game", size);
-        Chip::chord(ui.painter(), parts.control.left(), parts.control.center().y, &keys, false);
+        let chord = KeybindRowView::chord(model.config().toggle_chord);
+        SectionCard::new(Text::message(AmmMessage::PanelTitle)).show(ui, |rows| {
+            let control = SettingControl::Other(Box::new(|ui, _| chord.show(ui)));
+            let row = SettingRow::new(Text::message(AmmMessage::PanelToggle), control);
+            rows.row(row.help(Text::message(AmmMessage::PanelToggleHelp)));
+        });
     }
 
     fn mods(ui: &mut Ui, model: &PanelModel, out: &mut Vec<PanelIntent>) {
-        let count = model.mod_count();
-        let frame = Self::frame(ui, "Mods", count);
-        let size = vec2(Toggle::SIZE.0, Toggle::SIZE.1);
-        for (position, registered) in model.mods().enumerate() {
-            let help = format!("{}  \u{b7}  v{}", registered.descriptor.id, registered.descriptor.version);
-            let parts = Self::row(ui, frame, position, &registered.descriptor.display_name, &help, size);
-            let mut enabled = registered.enabled;
-            if Toggle::show(&mut ui.new_child(UiBuilder::new().max_rect(parts.control)), &mut enabled).changed() {
-                out.push(PanelIntent::Action(PanelAction::SetEnabled(registered.index, enabled)));
+        SectionCard::new(Text::message(AmmMessage::ModsTitle)).show(ui, |rows| {
+            for registered in model.mods() {
+                let descriptor = &registered.descriptor;
+                let args = Args::new()
+                    .user("id", UserText::from_model(descriptor.id.clone()))
+                    .user("version", UserText::from_model(descriptor.version.clone()));
+                let mut enabled = registered.enabled;
+                let name = Text::user(UserText::from_model(descriptor.display_name.clone()));
+                let row = SettingRow::new(name, SettingControl::Toggle(&mut enabled))
+                    .help(Text::format(AmmMessage::ModIdAndVersion, args));
+                if rows.row(row).changed() {
+                    out.push(PanelIntent::Action(PanelAction::SetEnabled(registered.index, enabled)));
+                }
             }
-        }
+        });
     }
 
     fn limits(ui: &mut Ui, model: &PanelModel) {
-        let value = model.config().budgets.max_mods.to_string();
-        let size = Draw::galley(ui.painter(), &value, Typeface::mono_text(), StudioPalette::TEXT).size();
-        let frame = Self::frame(ui, "Limits", 1);
-        let parts = Self::row(ui, frame, 0, "Mods", "Most mods that can register", size);
-        Draw::text(
-            ui.painter(),
-            parts.control.right_center(),
-            Align2::RIGHT_CENTER,
-            &value,
-            Typeface::mono_text(),
-            StudioPalette::TEXT,
-        );
+        let value = Text::user(UserText::from_model(model.config().budgets.max_mods.to_string()));
+        SectionCard::new(Text::message(AmmMessage::LimitsTitle)).show(ui, |rows| {
+            let text = <color::Text as ColorToken>::VALUE;
+            let control = SettingControl::Other(Box::new(|ui, _| TableCell::text(ui, &value, Self::VALUE, text)));
+            let row = SettingRow::new(Text::message(AmmMessage::LimitMods), control);
+            rows.row(row.help(Text::message(AmmMessage::LimitModsHelp)));
+        });
     }
 
-    // The caps title and the card of `rows` rows; returns the card.
-    fn frame(ui: &mut Ui, title: &str, rows: usize) -> Rect {
-        let left = ui.cursor().left();
-        let caps = Draw::caps(
-            ui.painter(),
-            pos2(left + 2.0, ui.cursor().top()),
-            Align2::LEFT_TOP,
-            title,
-            StudioPalette::TEXT_FAINT,
-        );
-        ui.add_space(caps.height() + Metrics::GAP_S);
-        let width = ui.available_width() - 8.0;
-        let height = Self::row_height(ui.painter()) * rows.max(1) as f32;
-        let (frame, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
-        Draw::fill(ui.painter(), frame, Metrics::RADIUS_PANEL - 2, StudioPalette::BG_PANEL);
-        Draw::outline(ui.painter(), frame, Metrics::RADIUS_PANEL - 2, 1.0, StudioPalette::LINE);
-        frame
-    }
-
-    // Paints the label and help of row `position` of a card; returns its parts.
-    fn row(ui: &Ui, frame: Rect, position: usize, label: &str, help: &str, control: Vec2) -> SettingsRowParts {
-        let painter = ui.painter();
-        let height = Self::row_height(painter);
-        let row = Rect::from_min_size(
-            pos2(frame.left(), frame.top() + position as f32 * height),
-            vec2(frame.width(), height),
-        );
-        if position > 0 {
-            Draw::hline(painter, row.left() + 16.0, row.right() - 16.0, row.top(), StudioPalette::LINE);
+    // English first, then each embedded pack by its code; an unknown code selects English
+    fn language(ui: &mut Ui, model: &PanelModel, out: &mut Vec<PanelIntent>) {
+        let codes = PanelLocale::languages();
+        let options = codes
+            .iter()
+            .map(|code| match code.as_str() {
+                "" => DropdownOption::new(Text::message(AmmMessage::English)),
+                code => DropdownOption::new(Text::user(UserText::from_model(code.to_owned()))),
+            })
+            .collect();
+        let mut selected = Some(codes.iter().position(|code| code == model.language()).unwrap_or(0));
+        let mut picked = false;
+        SectionCard::new(Text::message(AmmMessage::LanguageTitle)).show(ui, |rows| {
+            let control = SettingControl::Other(Box::new(|ui, _| {
+                let response =
+                    Dropdown::new(Id::unique(AmmId::Language), &mut selected, options).show(ui, Self::LANGUAGE_WIDTH);
+                picked = response.changed();
+                response
+            }));
+            let row = SettingRow::new(Text::message(AmmMessage::Language), control);
+            rows.row(row.help(Text::message(AmmMessage::LanguageHelp)));
+        });
+        if let Some(code) = selected.filter(|_| picked).and_then(|index| codes.get(index)) {
+            out.push(PanelIntent::Action(PanelAction::SetLanguage(code.clone())));
         }
-        let parts = Self::parts(painter, row, label, help, control);
-        Draw::text(painter, parts.label.min, Align2::LEFT_TOP, label, Typeface::body(), StudioPalette::TEXT);
-        Draw::text(painter, parts.help.min, Align2::LEFT_TOP, help, Typeface::help(), StudioPalette::TEXT_DIM);
-        parts
     }
 }

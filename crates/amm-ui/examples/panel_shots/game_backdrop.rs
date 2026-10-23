@@ -1,9 +1,8 @@
 use egui::epaint::Mesh;
-use egui::{Align2, Color32, FontId, Painter, Rect, Shape, pos2, vec2};
+use egui::{Align2, Color32, FontId, Painter, Rect, Shape, Stroke, StrokeKind, pos2, vec2};
 
-use studio_ui::widgets::Draw;
-
-// a stand-in for the game frame behind the overlay: a dusk sky, blocky hills, and a hotbar
+// A stand-in for the game frame behind the overlay: a dusk sky, blocky hills, and a hotbar. Its
+// colours stand for a game picture; they are not design values and do not come from tokens.
 pub struct GameBackdrop;
 
 impl GameBackdrop {
@@ -12,6 +11,9 @@ impl GameBackdrop {
     const HILL_FAR: Color32 = Color32::from_rgb(0x22, 0x3B, 0x33);
     const HILL_NEAR: Color32 = Color32::from_rgb(0x1A, 0x30, 0x22);
     const GROUND: Color32 = Color32::from_rgb(0x14, 0x24, 0x19);
+    const HOTBAR: Color32 = Color32::from_rgba_premultiplied(0, 0, 0, 120);
+    const SLOT: Color32 = Color32::from_rgba_premultiplied(40, 40, 40, 40);
+    const SLOT_LINE: f32 = 2.0;
     const BLOCK: f32 = 24.0;
     const MENU_DIM: Color32 = Color32::from_rgba_premultiplied(0, 0, 0, 110);
     const VERSION: &str = "v1.26.0";
@@ -28,13 +30,13 @@ impl GameBackdrop {
         );
         Self::hills(painter, rect, horizon - 40.0, 7, Self::HILL_FAR, 3.0);
         Self::hills(painter, rect, horizon + 10.0, 5, Self::HILL_NEAR, 5.0);
-        Draw::fill(painter, Rect::from_min_max(pos2(rect.left(), horizon + 70.0), rect.max), 0, Self::GROUND);
+        painter.rect_filled(Rect::from_min_max(pos2(rect.left(), horizon + 70.0), rect.max), 0.0, Self::GROUND);
         Self::hotbar(painter, rect);
     }
 
     // the game's pause screen over the frame: a dim layer and the version text in the bottom-right corner
     pub fn paint_menu(painter: &Painter, rect: Rect) {
-        Draw::fill(painter, rect, 0, Self::MENU_DIM);
+        painter.rect_filled(rect, 0.0, Self::MENU_DIM);
         let corner = pos2(rect.right() - Self::VERSION_MARGIN, rect.bottom() - Self::VERSION_MARGIN);
         painter.text(
             corner,
@@ -64,7 +66,7 @@ impl GameBackdrop {
                 * amplitude;
             let top = base - wave.round() * Self::BLOCK * 0.5;
             let x = rect.left() + column as f32 * Self::BLOCK;
-            Draw::fill(painter, Rect::from_min_max(pos2(x, top), pos2(x + Self::BLOCK, rect.bottom())), 0, colour);
+            painter.rect_filled(Rect::from_min_max(pos2(x, top), pos2(x + Self::BLOCK, rect.bottom())), 0.0, colour);
         }
     }
 
@@ -72,12 +74,12 @@ impl GameBackdrop {
         let slot = 40.0;
         let bar =
             Rect::from_center_size(pos2(rect.center().x, rect.bottom() - 30.0), vec2(slot * 9.0 + 4.0, slot + 4.0));
-        Draw::fill(painter, bar, 0, Color32::from_rgba_unmultiplied(0, 0, 0, 120));
+        painter.rect_filled(bar, 0.0, Self::HOTBAR);
         for index in 0..9 {
             let cell =
                 Rect::from_min_size(pos2(bar.left() + 2.0 + index as f32 * slot, bar.top() + 2.0), vec2(slot, slot))
                     .shrink(2.0);
-            Draw::outline(painter, cell, 0, 2.0, Color32::from_rgba_unmultiplied(255, 255, 255, 40));
+            painter.rect_stroke(cell, 0.0, Stroke::new(Self::SLOT_LINE, Self::SLOT), StrokeKind::Inside);
         }
     }
 }

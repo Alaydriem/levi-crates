@@ -6,6 +6,18 @@ use levi_ui::widget::{Chip, ChipKind, ChipTone, KeyCapSize, KeyChord};
 
 use crate::support::{ClickProbe, PaintCapture, Sample};
 
+#[test]
+fn a_chip_never_takes_more_than_the_room_given() {
+    let harness = ClickProbe::harness(|ui| {
+        ui.allocate_ui(egui::vec2(60.0, 40.0), |ui| {
+            Chip::new(ChipKind::Display(ChipTone::Neutral), Sample::text("World draw and more words")).show(ui)
+        })
+        .inner
+    });
+
+    assert!(harness.state().rect.width() <= 60.0, "the chip is {} wide", harness.state().rect.width());
+}
+
 struct ChipPaint;
 
 impl ChipPaint {

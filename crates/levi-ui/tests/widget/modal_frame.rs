@@ -23,6 +23,11 @@ struct ModalProbe;
 
 impl ModalProbe {
     fn harness(lines: usize) -> Harness<'static, ModalLog> {
+        Self::harness_wide(lines, None)
+    }
+
+    // as `harness`, with the card `width` wide when given
+    fn harness_wide(lines: usize, width: Option<f32>) -> Harness<'static, ModalLog> {
         let mut harness = Harness::builder()
             .with_size(vec2(1000.0, 700.0))
             .allow_missing_glyphs()
@@ -30,17 +35,20 @@ impl ModalProbe {
             .build_ui_state(
                 move |ui, log: &mut ModalLog| {
                     let ctx = ui.ctx().clone();
-                    let response = ModalFrame::new(Id::unique(ModalTestId::Export), Sample::text("Export scene"))
-                        .subtitle(Sample::text("Arrival"))
-                        .show(
-                            &ctx,
-                            |ui| {
-                                for _ in 0..lines {
-                                    ui.allocate_exact_size(vec2(100.0, 20.0), Sense::hover());
-                                }
-                            },
-                            |_| {},
-                        );
+                    let mut frame = ModalFrame::new(Id::unique(ModalTestId::Export), Sample::text("Export scene"))
+                        .subtitle(Sample::text("Arrival"));
+                    if let Some(width) = width {
+                        frame = frame.width(width);
+                    }
+                    let response = frame.show(
+                        &ctx,
+                        |ui| {
+                            for _ in 0..lines {
+                                ui.allocate_exact_size(vec2(100.0, 20.0), Sense::hover());
+                            }
+                        },
+                        |_| {},
+                    );
                     log.closed += usize::from(response.closed);
                     log.card = response.card;
                 },
@@ -102,6 +110,13 @@ fn tall_body_keeps_a_lane_from_the_screen_edge() {
     let card = ModalProbe::harness(60).state().card;
     let lane = <spacing::Lane as SpacingToken>::VALUE;
     assert!(card.top() >= lane - 1.0 && card.bottom() <= 700.0 - lane + 1.0, "{card:?}");
+}
+
+#[test]
+fn wider_card_keeps_a_lane_from_the_screen_edge() {
+    assert_eq!(ModalProbe::harness_wide(1, Some(700.0)).state().card.width(), 700.0);
+    let lane = <spacing::Lane as SpacingToken>::VALUE;
+    assert_eq!(ModalProbe::harness_wide(1, Some(2000.0)).state().card.width(), 1000.0 - lane * 2.0);
 }
 
 #[test]

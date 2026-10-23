@@ -24,13 +24,13 @@
     "--color-warning-soft": "levi-ui",
     "--color-danger": "levi-ui",
     "--color-danger-soft": "levi-ui",
-    "--color-axis-x": "studio-ui",
-    "--color-axis-y": "studio-ui",
-    "--color-axis-z": "studio-ui",
+    "--color-axis-x": "levi-ui",
+    "--color-axis-y": "levi-ui",
+    "--color-axis-z": "levi-ui",
     "--color-shadow": "levi-ui",
     "--color-dim": "levi-ui",
-    "--color-playhead": "studio-ui",
-    "--color-playhead-hover": "studio-ui",
+    "--color-playhead": "levi-ui",
+    "--color-playhead-hover": "levi-ui",
     "--color-track-camera": "studio-ui",
     "--color-track-fov": "studio-ui",
     "--color-track-time": "studio-ui",
@@ -42,6 +42,9 @@
     "--color-scene-4": "studio-ui",
     "--color-scene-5": "studio-ui",
     "--color-scene-6": "studio-ui",
+    "--color-realm-overworld": "studio-ui",
+    "--color-realm-nether": "studio-ui",
+    "--color-realm-end": "studio-ui",
     "--color-marker": "studio-ui",
     "--color-checkpoint": "studio-ui",
     "--color-status-works": "studio-ui",
@@ -167,6 +170,24 @@
     },
     {
       "crate": "studio-ui",
+      "name": "RealmColor",
+      "variants": [
+        [
+          "Overworld",
+          "--color-realm-overworld"
+        ],
+        [
+          "Nether",
+          "--color-realm-nether"
+        ],
+        [
+          "End",
+          "--color-realm-end"
+        ]
+      ]
+    },
+    {
+      "crate": "studio-ui",
       "name": "TrackColor",
       "variants": [
         [
@@ -240,7 +261,7 @@
       ]
     },
     {
-      "crate": "studio-ui",
+      "crate": "levi-ui",
       "name": "AxisColor",
       "variants": [
         [

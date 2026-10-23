@@ -23,6 +23,7 @@ impl EventName {
             ModEvent::ScreenshotTaken { .. } => "screenshot_taken",
             ModEvent::ScreenshotWritten { .. } => "screenshot_written",
             ModEvent::MenuEntryClicked { .. } => "menu_entry_clicked",
+            ModEvent::LocaleChanged => "locale_changed",
         }
     }
 }

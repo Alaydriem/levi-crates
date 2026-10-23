@@ -8,11 +8,12 @@ use amm_client::bridge::{ClipboardBackend, EguiFrame, FrameTrampoline};
 use amm_client::link::FrameHandler;
 use amm_core::structs::frame::{FrameInputData, LayerKind};
 use amm_core::structs::mesh::DrawCmd;
-use egui::{Rect, pos2, vec2};
+use egui::{FontFamily, Rect, pos2, vec2};
+use levi_ui::font::FontFace;
 
 use crate::support::{
-    ClipboardHold, ClipboardPass, ClipboardProbeHandler, FakeTable, HoldingHandler, LayerProbeHandler, LayerSeen,
-    OverlayPanickingHandler, RectHandler,
+    ClipboardHold, ClipboardPass, ClipboardProbeHandler, ContextProbeHandler, FakeTable, HoldingHandler,
+    LayerProbeHandler, LayerSeen, OverlayPanickingHandler, RectHandler,
 };
 
 fn layer_input(layer: u8, events: &[AmmUiEvent]) -> AmmFrameInput {
@@ -92,6 +93,36 @@ fn frame_output_points_at_physical_pixel_vertices() {
     assert_eq!(out.cursor, AmmCursorShape::Hand as u8);
     assert!(out.wants_pointer <= 1 && out.wants_keyboard <= 1);
     assert!(out.mesh.delta_count > 0, "the first pass uploads the font atlas");
+}
+
+#[test]
+fn a_layer_context_has_the_levi_ui_faces_only() {
+    let handler = ContextProbeHandler::default();
+    let families = Arc::clone(&handler.families);
+    let mut frame = EguiFrame::new(handler);
+
+    run_layer(&mut frame, FrameInputData::LAYER_HUD);
+
+    let families = families.lock().map(|families| families.clone()).unwrap_or_default();
+    assert!(families.contains(&FontFace::Semibold.family()), "{families:?}");
+    assert!(!families.contains(&FontFamily::Name("ui-semibold".into())), "the old studio theme is installed");
+}
+
+#[test]
+fn new_context_runs_once_per_context_and_again_after_textures_lost() {
+    let handler = ContextProbeHandler::default();
+    let count = Arc::clone(&handler.new_contexts);
+    let mut frame = EguiFrame::new(handler);
+    let seen = |count: &Arc<Mutex<usize>>| count.lock().map(|count| *count).unwrap_or_default();
+
+    run_layer(&mut frame, FrameInputData::LAYER_HUD);
+    let first = seen(&count);
+    run_layer(&mut frame, FrameInputData::LAYER_HUD);
+    let steady = seen(&count);
+    frame.textures_lost();
+    run_layer(&mut frame, FrameInputData::LAYER_HUD);
+
+    assert_eq!((first, steady, seen(&count)), (1, 1, 2));
 }
 
 #[test]

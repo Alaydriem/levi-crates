@@ -5,6 +5,7 @@ use amm_abi::types::{AMM_ABI_MAJOR, AmmApi, AmmStatus};
 use amm_ffi::api::amm_api_for;
 use amm_ffi::host::{amm_host_create, amm_host_destroy, amm_host_frame, amm_host_key};
 use amm_ffi::services::HostCell;
+use amm_ffi::services::host_runtime::HostRuntime;
 use amm_ffi::types::{AmmHostFrame, AmmHostFrameInput, AmmHostLayer, AmmHostRoute};
 use tempfile::TempDir;
 
@@ -45,6 +46,15 @@ impl TestHost {
         };
         assert_eq!(status, AmmStatus::Ok);
         host
+    }
+
+    /// Runs `change` on the live runtime, as the panel does for a person's choice.
+    pub fn with_runtime(&self, change: impl FnOnce(&mut HostRuntime)) {
+        let result = HostCell::global().with(|runtime| {
+            change(runtime);
+            Ok(())
+        });
+        assert_eq!(result, Ok(()));
     }
 
     pub fn api() -> &'static AmmApi {

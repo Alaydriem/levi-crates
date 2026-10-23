@@ -24,4 +24,6 @@ pub enum LeviUiId {
     FieldError,
     /// The option the keyboard has reached in an open dropdown list.
     DropdownHighlight,
+    /// The confirm popover's area.
+    ConfirmPopover,
 }

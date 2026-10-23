@@ -155,3 +155,15 @@ fn a_full_queue_drops_an_old_key_down_before_a_new_key_down_is_lost() {
     assert_eq!(queue.dropped(), 1);
     assert_eq!(drain(&mut queue), vec![down(2), down(3), down(4)]);
 }
+
+#[test]
+fn locale_event_survives_a_full_queue() {
+    let mut queue = EventQueue::new(3);
+    for n in 0..3 {
+        queue.push(button(n));
+    }
+
+    queue.push(ModEvent::LocaleChanged);
+
+    assert!(drain(&mut queue).contains(&ModEvent::LocaleChanged));
+}

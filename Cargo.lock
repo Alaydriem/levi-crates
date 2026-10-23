@@ -87,9 +87,10 @@ dependencies = [
  "curia",
  "egui",
  "hcl-rs",
+ "levi-i18n",
+ "levi-ui",
  "serde",
  "serde_json",
- "studio-ui",
  "tracing",
  "tracing-subscriber",
  "windows-sys 0.61.2",
@@ -138,8 +139,8 @@ dependencies = [
  "chrono",
  "curia",
  "hcl-rs",
+ "levi-ui",
  "serde_json",
- "studio-ui",
  "tempfile",
  "time",
  "tracing-subscriber",
@@ -168,7 +169,9 @@ dependencies = [
  "egui",
  "hcl-rs",
  "image",
- "studio-ui",
+ "levi-i18n",
+ "levi-i18n-tool",
+ "levi-ui",
 ]
 
 [[package]]
@@ -696,9 +699,10 @@ dependencies = [
  "curia",
  "egui",
  "hcl-rs",
+ "levi-i18n",
+ "levi-ui",
  "serde",
  "serde_json",
- "studio-ui",
  "tempfile",
 ]
 
@@ -2952,8 +2956,11 @@ dependencies = [
  "curia",
  "eframe",
  "egui",
- "image",
+ "egui_kittest",
+ "levi-i18n",
+ "levi-i18n-tool",
  "levi-ui",
+ "studio-ui",
 ]
 
 [[package]]

@@ -84,6 +84,8 @@ fn a_client_refuses_another_major() {
 const V1_1_SIZE: usize = std::mem::offset_of!(AmmApi, log) + size_of::<usize>();
 // The end of the last function of minor version 2, where a 1.2 manager's table ends.
 const V1_2_SIZE: usize = std::mem::offset_of!(AmmApi, texture_budget) + size_of::<usize>();
+// The end of the last function of minor version 4, where a 1.4 manager's table ends.
+const V1_4_SIZE: usize = std::mem::offset_of!(AmmApi, register_menu_entry) + size_of::<usize>();
 
 // An older manager's table: room for a whole current table, of which only the first `size` bytes, as its header
 // declares, belong to the older table.
@@ -149,4 +151,12 @@ fn request_screenshot_with_on_a_1_2_table_is_unsupported() {
     assert_eq!(link.request_screenshot_with(path, ScreenshotLayers::GameOnly).err(), unsupported);
     assert_eq!(link.request_screenshot(path), Ok(5));
     assert!(FakeTable::with(|state| state.screenshot_layers.is_empty()));
+}
+
+#[test]
+fn old_manager_has_no_locale() {
+    FakeTable::with(|state| state.locale = "en_XA");
+    let link = old_link(V1_4_SIZE, 4).expect("a 1.4 table registers");
+
+    assert_eq!(link.locale(), None);
 }

@@ -1,8 +1,8 @@
 use amm_core::structs::toast::{Toast, ToastKind};
-use egui::{Align2, Color32, Context, Id, LayerId, Order, Painter, Rect, pos2, vec2};
-use studio_ui::theme::{Icon, Metrics, StudioPalette, Typeface};
-use studio_ui::widgets::Draw;
+use egui::{Context, Id, LayerId, Order, Rect, Ui, UiBuilder, pos2, vec2};
+use levi_ui::widget::{Toast as ToastCard, ToastTone};
 
+use crate::AmmId;
 use crate::model::{PanelModel, ToastText};
 
 /// The toast stack in the bottom-right corner, newest at the bottom, inside a 24 px screen margin.
@@ -13,42 +13,32 @@ pub struct ToastsView;
 
 impl ToastsView {
     pub const MARGIN: f32 = 24.0;
+    /// Paper: Mod manager screen 06, a toast's width.
     const WIDTH: f32 = 480.0;
+    /// Paper: Mod manager screen 06, the gap between two toasts.
     const GAP: f32 = 8.0;
-    // from the card top to the title, and between the lines of text
-    const TOP: f32 = 14.0;
-    const LINE_GAP: f32 = 2.0;
-    // the progress track and the space above it
-    const BOTTOM: f32 = 16.0;
 
     pub fn show(ctx: &Context, screen: Rect, panel: Option<Rect>, corner: Option<Rect>, model: &PanelModel) {
-        let count = model.toasts().count();
-        if count == 0 {
+        let toasts: Vec<&Toast> = model.toasts().collect();
+        if toasts.is_empty() {
             return;
         }
-        let painter = ctx.layer_painter(LayerId::new(Order::Middle, Id::unique("amm.toasts")));
-        let height = Self::height(&painter);
-        let stack = count as f32 * (height + Self::GAP) - Self::GAP;
+        let layer = LayerId::new(Order::Middle, Id::unique(AmmId::Toasts));
+        let mut ui = Ui::new(ctx.clone(), Id::unique(AmmId::Toasts), UiBuilder::new().layer_id(layer).max_rect(screen));
+        // each card's height for its wrapped text, from a pass that paints nothing
+        let heights: Vec<f32> = toasts.iter().map(|toast| Self::measure(&mut ui, screen, toast, model)).collect();
+        let stack = heights.iter().sum::<f32>() + Self::GAP * (heights.len() - 1) as f32;
         let (right, bottom) = Self::anchor(screen, panel, corner, stack);
-        let mut y = bottom;
         let top_limit = screen.top() + Self::MARGIN;
-        let toasts: Vec<&Toast> = model.toasts().collect();
-        for toast in toasts.iter().rev() {
+        let mut y = bottom;
+        for (toast, height) in toasts.iter().zip(heights).rev() {
             if y - height < top_limit {
                 break;
             }
-            let card = Rect::from_min_max(pos2(right - Self::WIDTH, y - height), pos2(right, y));
-            Self::card(&painter, card, toast, model);
+            let rect = Rect::from_min_max(pos2(right - Self::WIDTH, y - height), pos2(right, y));
+            Self::card(toast, model).show(&mut ui.new_child(UiBuilder::new().max_rect(rect)));
             y -= height + Self::GAP;
         }
-    }
-
-    // one card: the title, the message and the hint lines, then the progress track
-    fn height(painter: &Painter) -> f32 {
-        let title = Draw::line_height(painter, &Typeface::label_strong());
-        let message = Draw::line_height(painter, &Typeface::help());
-        let hint = Draw::line_height(painter, &Typeface::note());
-        Self::TOP + title + Self::LINE_GAP + message + Self::LINE_GAP + hint + Self::BOTTOM
     }
 
     /// The bottom-right corner of a stack `stack` points high, given the open panel's rect and the
@@ -66,73 +56,32 @@ impl ToastsView {
         (right.min(panel.right() - Self::MARGIN), bottom.min(panel.bottom() - Self::MARGIN))
     }
 
-    fn card(painter: &Painter, card: Rect, toast: &Toast, model: &PanelModel) {
-        Draw::shadow(painter, card, Metrics::RADIUS_PANEL, 24.0, vec2(0.0, 6.0), StudioPalette::SHADOW);
-        Draw::fill(painter, card, Metrics::RADIUS_PANEL, StudioPalette::BG_RAISED);
-        Draw::outline(painter, card, Metrics::RADIUS_PANEL, 1.0, StudioPalette::LINE_STRONG);
-        let (icon, tint, soft) = Self::look(&toast.kind);
-        let icon_centre = pos2(card.left() + 32.0, card.top() + 30.0);
-        painter.circle_filled(icon_centre, 16.0, soft);
-        Draw::icon(painter, icon_centre, icon, Typeface::ICON_SIZE, tint);
-        let text = ToastText::render(&toast.kind, model);
-        let (title, rest) = match text.split_once(". ") {
-            Some((title, rest)) => (format!("{title}."), rest.to_string()),
-            None => (text, String::new()),
-        };
-        let x = card.left() + 60.0;
-        let title = Draw::text(
-            painter,
-            pos2(x, card.top() + Self::TOP),
-            Align2::LEFT_TOP,
-            &title,
-            Typeface::label_strong(),
-            StudioPalette::TEXT,
-        );
-        let message_top = title.bottom() + Self::LINE_GAP;
-        let message_height = Draw::line_height(painter, &Typeface::help());
-        Draw::text(painter, pos2(x, message_top), Align2::LEFT_TOP, &rest, Typeface::help(), StudioPalette::TEXT);
-        if let Some(hint) = Self::hint(&toast.kind) {
-            let hint_top = message_top + message_height + Self::LINE_GAP;
-            Draw::text(painter, pos2(x, hint_top), Align2::LEFT_TOP, hint, Typeface::note(), StudioPalette::TEXT_DIM);
-        }
+    fn measure(ui: &mut Ui, screen: Rect, toast: &Toast, model: &PanelModel) -> f32 {
+        let place = Rect::from_min_size(screen.min, vec2(Self::WIDTH, screen.height()));
+        let mut probe = ui.new_child(UiBuilder::new().max_rect(place).invisible().sizing_pass());
+        Self::card(toast, model).show(&mut probe);
+        probe.min_rect().height()
+    }
+
+    // the card: the title, message and hint from `ToastText`, the age and the time left
+    fn card(toast: &Toast, model: &PanelModel) -> ToastCard {
+        let words = ToastText::render(&toast.kind, model);
         let age = model.now_ms().saturating_sub(toast.created_ms);
-        let age_text = if age < 1000 { "now".to_string() } else { format!("{} s", age / 1000) };
-        Draw::text(
-            painter,
-            pos2(card.right() - 14.0, card.top() + Self::TOP),
-            Align2::RIGHT_TOP,
-            &age_text,
-            Typeface::note(),
-            StudioPalette::TEXT_FAINT,
-        );
-        let track = Rect::from_min_max(
-            pos2(card.left() + 12.0, card.bottom() - 6.0),
-            pos2(card.right() - 12.0, card.bottom() - 4.0),
-        );
-        Draw::fill(painter, track, 1, StudioPalette::LINE);
-        let left = 1.0 - (age as f32 / PanelModel::TOAST_TTL_MS as f32).clamp(0.0, 1.0);
-        let progress = Rect::from_min_max(track.min, pos2(track.left() + track.width() * left, track.bottom()));
-        Draw::fill(painter, progress, 1, tint);
-    }
-
-    fn look(kind: &ToastKind) -> (char, Color32, Color32) {
-        match kind {
-            ToastKind::Denied { .. } | ToastKind::Blocked { .. } => {
-                (Icon::BLOCKED, StudioPalette::DANGER, StudioPalette::DANGER_SOFT)
-            }
-            ToastKind::FrameDisabled(_) | ToastKind::SaveFailed => {
-                (Icon::WARNING, StudioPalette::WARNING, StudioPalette::WARNING_SOFT)
-            }
+        let remaining = 1.0 - age as f32 / PanelModel::TOAST_TTL_MS as f32;
+        let mut card = ToastCard::new(Self::tone(&toast.kind), words.title).age_ms(age).remaining(remaining);
+        if let Some(message) = words.message {
+            card = card.message(message);
         }
+        if let Some(hint) = words.hint {
+            card = card.hint(hint);
+        }
+        card
     }
 
-    fn hint(kind: &ToastKind) -> Option<&'static str> {
+    fn tone(kind: &ToastKind) -> ToastTone {
         match kind {
-            ToastKind::Denied { .. } | ToastKind::Blocked { .. } => {
-                Some("Change the rule in the panel under Conflicts")
-            }
-            ToastKind::FrameDisabled(_) => Some("Turn it off and on in the panel to try again"),
-            ToastKind::SaveFailed => None,
+            ToastKind::Denied { .. } | ToastKind::Blocked { .. } => ToastTone::Danger,
+            ToastKind::FrameDisabled(_) | ToastKind::SaveFailed => ToastTone::Warning,
         }
     }
 }

@@ -22,6 +22,7 @@ pub struct ModalFrame {
     id: Id,
     title: Text,
     subtitle: Option<Text>,
+    width: f32,
 }
 
 impl ModalFrame {
@@ -29,7 +30,14 @@ impl ModalFrame {
     const SUBTITLE: TextStyle = TextStyle::new(TypeSize::Note, FontFace::Regular);
 
     pub fn new(id: Id, title: Text) -> Self {
-        Self { id, title, subtitle: None }
+        Self { id, title, subtitle: None, width: <container::Dialog as ContainerToken>::VALUE }
+    }
+
+    /// A card `width` wide instead of `--container-dialog`, for a dialog Paper draws wider (the studio's export,
+    /// render queue and coverage dialogs). It still keeps `--spacing-lane` from the screen edges.
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
     }
 
     pub fn subtitle(mut self, text: Text) -> Self {
@@ -42,7 +50,7 @@ impl ModalFrame {
     pub fn show(self, ctx: &Context, body: impl FnOnce(&mut Ui), footer: impl FnOnce(&mut Ui)) -> ModalResponse {
         let screen = ctx.content_rect();
         let lane = <spacing::Lane as SpacingToken>::VALUE;
-        let width = <container::Dialog as ContainerToken>::VALUE.min(screen.width() - lane * 2.0);
+        let width = self.width.min(screen.width() - lane * 2.0);
         let max_height = (screen.height() - lane * 2.0).max(0.0);
         let modal = Modal::new(self.id).frame(Frame::NONE).backdrop_color(<color::BgOverlay as ColorToken>::VALUE);
         let shown = modal.show(ctx, |ui| self.card(ui, width, max_height, body, footer));
@@ -52,7 +60,7 @@ impl ModalFrame {
 
     /// Shows the card where `ui` places it, with no scrim and no Escape, for the gallery.
     pub fn show_card(self, ui: &mut Ui, body: impl FnOnce(&mut Ui), footer: impl FnOnce(&mut Ui)) -> ModalResponse {
-        self.card(ui, <container::Dialog as ContainerToken>::VALUE, f32::INFINITY, body, footer)
+        self.card(ui, self.width, f32::INFINITY, body, footer)
     }
 
     fn card(
@@ -80,11 +88,19 @@ impl ModalFrame {
             let body_height = (max_height - border * 2.0 - header_height - footer_height - padding * 2.0).max(0.0);
             Frame::new().inner_margin(Draw::margin(padding, padding)).show(ui, |ui| {
                 ui.set_width(content - padding * 2.0);
-                ScrollArea::vertical().max_height(body_height).auto_shrink([false, true]).show(ui, |ui| {
-                    ui.spacing_mut().item_spacing =
-                        vec2(<spacing::S as SpacingToken>::VALUE, <spacing::M as SpacingToken>::VALUE);
-                    body(ui);
-                });
+                let gaps = vec2(<spacing::S as SpacingToken>::VALUE, <spacing::M as SpacingToken>::VALUE);
+                if body_height.is_finite() {
+                    ScrollArea::vertical().max_height(body_height).auto_shrink([false, true]).show(ui, |ui| {
+                        ui.spacing_mut().item_spacing = gaps;
+                        body(ui);
+                    });
+                } else {
+                    // a card with no screen to fit (the gallery) shows its whole body
+                    ui.vertical(|ui| {
+                        ui.spacing_mut().item_spacing = gaps;
+                        body(ui);
+                    });
+                }
             });
             Self::divider(ui);
             Frame::new().inner_margin(Draw::margin(padding, padding)).show(ui, |ui| {

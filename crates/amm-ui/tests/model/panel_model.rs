@@ -15,7 +15,7 @@ fn the_keybinds_page_lists_the_panel_toggle_first_then_every_bind_of_every_mod()
     let declared: usize = model.mods().map(|registered| registered.descriptor.keybinds.len()).sum();
     assert_eq!(rows.len(), declared + 1);
     assert_eq!(rows[0].target, RebindTarget::ManagerToggle);
-    assert_eq!((rows[0].mod_name, rows[0].label), ("Mod Manager", "Open/close panel"));
+    assert_eq!((rows[0].mod_name, rows[0].label, rows[0].capability), ("", "", None));
     assert_eq!(rows[0].chord, ManagerConfig::default().toggle_chord);
     for registered in model.mods() {
         for (position, bind) in registered.descriptor.keybinds.iter().enumerate() {

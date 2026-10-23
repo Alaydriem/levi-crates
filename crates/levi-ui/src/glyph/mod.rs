@@ -1,8 +1,10 @@
+mod key;
 mod snap_magnet;
 mod spinner;
 mod spinner_size;
 mod swatch_dot;
 
+pub use key::{KeyAuto, KeyCustom, KeyEased, KeyHold, KeyLook};
 pub use snap_magnet::SnapMagnet;
 pub use spinner::Spinner;
 pub use spinner_size::SpinnerSize;

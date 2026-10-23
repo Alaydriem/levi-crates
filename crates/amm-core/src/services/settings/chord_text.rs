@@ -40,17 +40,21 @@ impl ChordText {
 
     /// Writes the canonical form: Ctrl, Shift, Alt, then the key.
     pub fn format(chord: Chord) -> String {
-        let mut text = String::new();
+        Self::keys(chord).join("+")
+    }
+
+    /// The name of each key of the chord in the canonical order, one per key cap.
+    pub fn keys(chord: Chord) -> Vec<String> {
+        let mut keys = Vec::new();
         for (is_set, name) in [(chord.ctrl, Self::CTRL), (chord.shift, Self::SHIFT), (chord.alt, Self::ALT)] {
             if is_set {
-                text.push_str(name);
-                text.push('+');
+                keys.push(name.to_owned());
             }
         }
-        match KeyNames::name(chord.key) {
-            Some(name) => text.push_str(name),
-            None => text.push_str(&format!("VK_0x{:X}", chord.key)),
-        }
-        text
+        keys.push(match KeyNames::name(chord.key) {
+            Some(name) => name.to_owned(),
+            None => format!("VK_0x{:X}", chord.key),
+        });
+        keys
     }
 }

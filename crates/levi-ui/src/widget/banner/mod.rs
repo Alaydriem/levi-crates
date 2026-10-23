@@ -100,8 +100,11 @@ impl<'a> Banner<'a> {
                 let chord_rect = chord.paint(&painter, pos2(x + title.size().x + between, centre));
                 let text = <color::Text as ColorToken>::VALUE;
                 let tail = UiText::resolve(ui.ctx(), &tail);
-                let tail = Draw::galley(&painter, &tail, Self::BODY, text, TextFit::Line);
-                painter.galley(pos2(chord_rect.right() + between, centre - tail.size().y / 2.0), tail, text);
+                // the line is one row: the tail is cut where the text column ends
+                let left = chord_rect.right() + between;
+                let fit = TextFit::Truncate((x + column - left).max(0.0));
+                let tail = Draw::galley(&painter, &tail, Self::BODY, text, fit);
+                painter.galley(pos2(left, centre - tail.size().y / 2.0), tail, text);
             }
             (None, body) => {
                 let title_height = title.size().y;

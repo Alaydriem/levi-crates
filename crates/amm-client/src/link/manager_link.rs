@@ -18,7 +18,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use super::FrameHandler;
 use super::{ApiTable, EventDrain, ForwardSink};
 #[cfg(feature = "egui")]
-use crate::bridge::{EguiFrame, FrameTrampoline};
+use crate::bridge::{EguiFrame, FrameTrampoline, LocaleSlot};
 
 /// A mod's registration with the manager. A link made with a frame handler owns the boxed frame state the
 /// manager's callbacks use; a link without a frame owns no frame state. Drop unregisters, then frees the frame
@@ -32,6 +32,9 @@ pub struct ManagerLink {
     free: Option<unsafe fn(*mut c_void)>,
     drain: EventDrain,
     sink: ForwardSink,
+    // The localizer the frame's layers read; a link without a frame has a slot no pass reads
+    #[cfg(feature = "egui")]
+    locale: LocaleSlot,
 }
 
 // SAFETY: the frame state behind `user`, when there is one, holds an `H: Send` and is reached only by the
@@ -44,6 +47,8 @@ impl ManagerLink {
     const LOG_LEVEL: Level = Level::Trace;
     // Room for the longest mod id the descriptor checker accepts, so one call is enough
     const HOLDER_ID_BYTES: usize = 64;
+    // Room for a locale id such as `pt_BR` or `zh_Hant_TW`, so one call is enough
+    const LOCALE_BYTES: usize = 16;
 
     /// Registers the mod from its descriptor text, with `handler` as its egui pass, and installs Curia in this
     /// DLL with a sink that forwards to the manager. Curia already being installed counts as success.
@@ -56,9 +61,20 @@ impl ManagerLink {
         config_dir: &Path,
         handler: H,
     ) -> Result<ManagerLink, LinkError> {
-        let user = FrameTrampoline::<H>::into_user(EguiFrame::new(handler));
+        let frame = EguiFrame::new(handler);
+        let locale = frame.locale().clone();
+        let user = FrameTrampoline::<H>::into_user(frame);
         let callbacks = FrameTrampoline::<H>::callbacks(user);
-        Self::register(table, descriptor_hcl, config_dir, callbacks, Some(FrameTrampoline::<H>::free))
+        let mut link = Self::register(table, descriptor_hcl, config_dir, callbacks, Some(FrameTrampoline::<H>::free))?;
+        link.locale = locale;
+        Ok(link)
+    }
+
+    /// The localizer the mod's widgets resolve their text with, from the next pass on. Build it from `locale` at
+    /// start and again on `ModEvent::LocaleChanged`; it lasts when the host rebuilds the egui contexts.
+    #[cfg(feature = "egui")]
+    pub fn set_localizer(&self, localizer: std::sync::Arc<levi_i18n::localize::Localizer>) {
+        self.locale.set(localizer);
     }
 
     /// Registers the mod from its descriptor text with no frame and no textures-lost callback, for a mod that
@@ -95,7 +111,16 @@ impl ManagerLink {
         };
         let sink = ForwardSink::new(table, handle, Self::LOG_LEVEL);
         Self::install_logging(&sink);
-        Ok(Self { table, handle, user: callbacks.user, free, drain: EventDrain::new(), sink })
+        Ok(Self {
+            table,
+            handle,
+            user: callbacks.user,
+            free,
+            drain: EventDrain::new(),
+            sink,
+            #[cfg(feature = "egui")]
+            locale: LocaleSlot::new(),
+        })
     }
 
     fn register_handle(
@@ -151,6 +176,27 @@ impl ManagerLink {
             // SAFETY: release takes plain values; the handle is this link's until drop
             unsafe { release(self.handle, AmmCapability::from(capability) as u8) };
         }
+    }
+
+    /// The language code the person picked in the manager: empty for English, `en_XA` for the pseudo-locale, or a
+    /// locale such as `ru`. Map it with `LocaleSetting::from_code`. After this call the mod gets
+    /// `ModEvent::LocaleChanged` when the code changes. `None` on a manager older than ABI 1.5, which has no
+    /// language setting: show English.
+    pub fn locale(&self) -> Option<String> {
+        let locale = self.table.api().locale?;
+        let mut buffer = [0u8; Self::LOCALE_BYTES];
+        // SAFETY: the buffer has room for its length in bytes for the call; the handle is this link's until drop
+        let len = unsafe { locale(self.handle, buffer.as_mut_ptr(), buffer.len()) } as usize;
+        if len <= buffer.len() {
+            return std::str::from_utf8(&buffer[..len]).ok().map(str::to_owned);
+        }
+        let mut long = vec![0u8; len];
+        // SAFETY: the buffer has room for its length in bytes for the call; the handle is this link's until drop
+        let again = unsafe { locale(self.handle, long.as_mut_ptr(), long.len()) } as usize;
+        if again > long.len() {
+            return None;
+        }
+        std::str::from_utf8(&long[..again]).ok().map(str::to_owned)
     }
 
     /// The id of the mod that holds `capability` now, or `None` when no mod holds it.
