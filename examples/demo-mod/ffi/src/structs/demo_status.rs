@@ -24,7 +24,7 @@ impl From<&LinkError> for DemoStatus {
         match error {
             LinkError::ManagerMissing => DemoStatus::ManagerMissing,
             LinkError::AbiMismatch { .. } => DemoStatus::AbiMismatch,
-            LinkError::Status(_) | LinkError::Json { .. } => DemoStatus::RegisterFailed,
+            LinkError::Status(_) | LinkError::Json { .. } | LinkError::IconFile { .. } => DemoStatus::RegisterFailed,
         }
     }
 }

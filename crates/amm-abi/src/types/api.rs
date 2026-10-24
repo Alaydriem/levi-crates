@@ -150,4 +150,15 @@ pub struct AmmApi {
     /// 0. The first call marks the mod as a reader: only a reader gets `LocaleChanged`, so a mod built for 1.4 or
     /// older never sees that event kind. The manager keeps no pointer to the buffer after the call.
     pub locale: Option<unsafe extern "C" fn(handle: AmmHandle, out_buf: *mut u8, out_cap: usize) -> u32>,
+    /// Game thread. Since 1.6. Sets the mod's icon, shown in the manager panel, from the PNG file bytes at `png`.
+    /// The file is at most 262144 bytes; its first frame is used, and its width and height are each 1 to 256
+    /// pixels. A zero `png_len` clears the icon, and `png` may then be null. A null `png` with a `png_len` above 0
+    /// is `NullPointer`. A file that is too large, is not a PNG, is outside the size range or is corrupt is
+    /// `InvalidArgument`, and the icon the mod had stays. A handle that names no live registration is
+    /// `UnknownHandle`. The bytes are checked before the handle, so bad bytes on an unknown handle are
+    /// `InvalidArgument`. `png` is valid only for the call; the manager keeps a decoded copy. It may be called at any time after
+    /// `register`. A new call replaces the current icon, and a `png_len` of 0 clears it, so the letter tile shows
+    /// again. A decoder panic returns `Panic` and leaves the current icon as it was. The icon goes away when the
+    /// mod unregisters.
+    pub set_icon: Option<unsafe extern "C" fn(handle: AmmHandle, png: *const u8, png_len: usize) -> AmmStatus>,
 }

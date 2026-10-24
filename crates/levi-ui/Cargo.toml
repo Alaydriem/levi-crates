@@ -33,6 +33,8 @@ eframe.workspace = true
 egui_kittest = { workspace = true, features = ["snapshot", "wgpu"] }
 levi-ui = { path = ".", features = ["gallery"] }
 levi-i18n-tool = { path = "../levi-i18n-tool" }
+levi-rules = { path = "../levi-rules" }
 levi-ui-gen = { path = "../levi-ui-gen" }
+log.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

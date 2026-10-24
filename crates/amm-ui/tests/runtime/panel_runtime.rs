@@ -5,7 +5,7 @@ use amm_ui::model::{PanelAction, PanelModel, PanelPage, PanelTab, RebindTarget};
 use amm_ui::runtime::PanelRuntime;
 use levi_ui::font::FontSource;
 
-use crate::support::{FourMods, MINIMAP, MINIMAP_SETTINGS};
+use crate::support::{FourMods, IconFixture, MINIMAP, MINIMAP_SETTINGS};
 
 const VERTEX_BUDGET: usize = 262_144;
 const FRAMES_PER_VIEW: u32 = 3;
@@ -216,4 +216,28 @@ fn a_click_on_the_menu_button_asks_to_open_the_panel() {
     let actions = runtime.run(&input_with(0.3, &[pointer(UiEventKind::PointerButton, at, false)]), &model, &mut out);
 
     assert_eq!(actions.to_vec(), vec![PanelAction::Open]);
+}
+
+#[test]
+fn textures_lost_reuploads_icons() {
+    let mut mods = FourMods::new(MINIMAP);
+    mods.manager
+        .set_icon(mods.freecam, Some(IconFixture::solid(8, 8, [255, 0, 0, 255])))
+        .expect("freecam is registered");
+    mods.manager.set_panel_open(true);
+    let model = PanelModel::new(&mods.manager, "1.4.1", 0);
+    let mut runtime = PanelRuntime::new(FontSource::BuiltIn, "");
+    let mut out = MeshBuffers::new();
+    runtime.run(&input(0.0), &model, &mut out);
+    let uploads = |out: &MeshBuffers| out.deltas.iter().filter(|delta| (delta.width, delta.height) == (8, 8)).count();
+    let first = uploads(&out);
+    runtime.run(&input(0.1), &model, &mut out);
+    let steady = uploads(&out);
+
+    runtime.textures_lost();
+    runtime.run(&input(0.2), &model, &mut out);
+
+    assert_eq!(first, 1, "the first pass uploads the icon");
+    assert_eq!(steady, 0);
+    assert_eq!(uploads(&out), 1, "the icon is uploaded again");
 }

@@ -44,7 +44,7 @@ impl Glyph for BookmarkFlag {
         painter.extend(dashes);
         Draw::fill(painter, flag, Corner::Small, color);
         let ink = <color::BgApp as ColorToken>::VALUE;
-        let icon = Rect::from_center_size(pos2(flag.left() + Self::ICON_X, flag.center().y), vec2(0.0, 0.0));
+        let icon = Rect::from_center_size(pos2(flag.left() + Self::ICON_X, flag.center().y), egui::Vec2::ZERO);
         Icon::Flag.paint(painter, icon, IconSize::Small, ink);
         let style = TextStyle::new(TypeSize::Micro, FontFace::Semibold);
         let fit = TextFit::Truncate(flag.width() - Self::LABEL_X - Self::LABEL_END_PADDING);

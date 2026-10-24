@@ -19,6 +19,14 @@ impl CoverageBadge {
     pub const HEIGHT: f32 = <spacing::L as SpacingToken>::VALUE;
     const STYLE: TextStyle = TextStyle::new(TypeSize::Micro, FontFace::Semibold);
 
+    /// The label is a `Text`, so a raw string does not compile:
+    ///
+    /// ```compile_fail
+    /// use studio_ui::component::coverage::CoverageBadge;
+    /// use studio_ui::tokens::selector::StatusColor;
+    ///
+    /// CoverageBadge::new(StatusColor::Works, "Done");
+    /// ```
     pub fn new(status: StatusColor, label: Text) -> Self {
         Self { status, label }
     }

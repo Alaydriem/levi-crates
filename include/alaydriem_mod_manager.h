@@ -15,7 +15,7 @@
 /*
  The ABI minor version. It grows when functions are added at the end of the table.
  */
-#define AMM_ABI_MINOR 5
+#define AMM_ABI_MINOR 6
 
 /*
  The result code of a table function.
@@ -560,6 +560,19 @@ typedef struct AmmApi {
    older never sees that event kind. The manager keeps no pointer to the buffer after the call.
    */
   uint32_t (*locale)(struct AmmHandle handle, uint8_t *out_buf, uintptr_t out_cap);
+  /*
+   Game thread. Since 1.6. Sets the mod's icon, shown in the manager panel, from the PNG file bytes at `png`.
+   The file is at most 262144 bytes; its first frame is used, and its width and height are each 1 to 256
+   pixels. A zero `png_len` clears the icon, and `png` may then be null. A null `png` with a `png_len` above 0
+   is `NullPointer`. A file that is too large, is not a PNG, is outside the size range or is corrupt is
+   `InvalidArgument`, and the icon the mod had stays. A handle that names no live registration is
+   `UnknownHandle`. The bytes are checked before the handle, so bad bytes on an unknown handle are
+   `InvalidArgument`. `png` is valid only for the call; the manager keeps a decoded copy. It may be called at any time after
+   `register`. A new call replaces the current icon, and a `png_len` of 0 clears it, so the letter tile shows
+   again. A decoder panic returns `Panic` and leaves the current icon as it was. The icon goes away when the
+   mod unregisters.
+   */
+  AmmStatus (*set_icon)(struct AmmHandle handle, const uint8_t *png, uintptr_t png_len);
 } AmmApi;
 
 #endif  /* ALAYDRIEM_MOD_MANAGER_H */

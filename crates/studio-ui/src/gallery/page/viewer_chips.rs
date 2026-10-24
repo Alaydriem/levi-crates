@@ -21,6 +21,8 @@ impl ViewerChipsPage {
     // Paper: the readout at a wide (980 and up), a middle and a small picture
     const READOUT_WIDTHS: [f32; 3] = [1064.0, 800.0, 640.0];
     const CARDS: f32 = 160.0;
+    /// Paper: the picture each owner tag sample sits on.
+    const OWNER_VIEWER: egui::Vec2 = vec2(280.0, 40.0);
 
     pub fn show(ui: &mut Ui, _state: &mut GalleryState) {
         BarRows::page(ui, |ui| {
@@ -98,7 +100,7 @@ impl ViewerChipsPage {
         {
             let viewer = Rect::from_min_size(
                 pos2(band.left() + 760.0 + 300.0 * index as f32, band.top() + 11.0),
-                vec2(280.0, 40.0),
+                Self::OWNER_VIEWER,
             );
             ViewerChips::owner_tag(ui.painter(), viewer, owner);
         }

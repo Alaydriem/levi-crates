@@ -4,14 +4,14 @@ use levi_i18n::text::UserText;
 use crate::draw::{Corner, Draw};
 use crate::icon::{Icon, IconSize};
 use crate::tokens::{SpacingToken, spacing};
-use crate::widget::{Avatar, AvatarSize, ChipTone};
+use crate::widget::{Avatar, AvatarImage, AvatarSize, ChipTone};
 
 /// The part at the left of a page header.
 pub enum PageHeaderLead {
     /// An icon on a tile in a chip tone's fill and text colour.
     Tile(Icon, ChipTone),
-    /// A large avatar with the name's first letter.
-    Avatar(UserText),
+    /// A large avatar with the name's first letter, or the picture when there is one.
+    Avatar(UserText, Option<AvatarImage>),
 }
 
 impl PageHeaderLead {
@@ -21,7 +21,7 @@ impl PageHeaderLead {
         match (self, panel) {
             (Self::Tile(..), true) => <spacing::Tile as SpacingToken>::VALUE,
             (Self::Tile(..), false) => <spacing::TileLarge as SpacingToken>::VALUE,
-            (Self::Avatar(_), _) => AvatarSize::Large.side(),
+            (Self::Avatar(..), _) => AvatarSize::Large.side(),
         }
     }
 
@@ -32,7 +32,7 @@ impl PageHeaderLead {
                 Draw::fill(painter, rect, corner, tone.fill());
                 icon.paint(painter, rect, IconSize::Regular, tone.text());
             }
-            Self::Avatar(name) => Avatar::new(name, AvatarSize::Large).paint(painter, rect),
+            Self::Avatar(name, image) => Avatar::new(name, AvatarSize::Large).image(image.clone()).paint(painter, rect),
         }
     }
 }

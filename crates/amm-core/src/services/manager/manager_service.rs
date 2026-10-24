@@ -11,6 +11,7 @@ use crate::services::capture::CaptureBook;
 use crate::services::clash::ClashAnalyzer;
 use crate::services::descriptor::DescriptorChecker;
 use crate::services::event::EventHub;
+use crate::services::icon::IconBook;
 use crate::services::input::{ChordMatcher, CursorSet, InputRouter, KeyState};
 use crate::services::lease::LeaseArbiter;
 use crate::services::menu::MenuEntries;
@@ -24,6 +25,7 @@ use crate::structs::clash::ClashReport;
 use crate::structs::descriptor::{ApplyMode, Capability, Chord, Descriptor, FieldKind, SettingField};
 use crate::structs::event::{KeybindPhase, ModEvent};
 use crate::structs::frame::{FrameReplyData, LayerKind, MenuScreen};
+use crate::structs::icon::{IconEntry, ModIcon};
 use crate::structs::input::{InputEvent, RouteContext, RouteDecision};
 use crate::structs::lease::AcquireOutcome;
 use crate::structs::manager::{ManagedMod, TextureGrant};
@@ -64,6 +66,7 @@ pub struct ManagerService {
     cursor: CursorSet,
     panel: PanelState,
     menu: MenuEntries,
+    icons: IconBook,
     /// The mods that have read the language code. Only these get `LocaleChanged`: a mod built for an ABI older
     /// than 1.5 never reads it, and cannot decode that event kind.
     locale_readers: ModMask,
@@ -105,6 +108,7 @@ impl ManagerService {
             cursor: CursorSet::new(),
             panel: PanelState::new(config.menu_button),
             menu: MenuEntries::new(),
+            icons: IconBook::new(slots),
             locale_readers: ModMask::default(),
             replies: LayerReplies::new(slots),
             captures: CaptureBook::new(),
@@ -176,6 +180,18 @@ impl ManagerService {
         Ok((index, checked))
     }
 
+    /// Sets or clears the icon of the mod in `index`. A slot with no mod is `UnknownMod`.
+    pub fn set_icon(&mut self, index: ModIndex, icon: Option<ModIcon>) -> Result<(), ManagerError> {
+        self.registry.get(index).ok_or(ManagerError::UnknownMod)?;
+        self.icons.set(index, icon);
+        Ok(())
+    }
+
+    /// The icon of the mod in `index`, if it set one.
+    pub fn icon(&self, index: ModIndex) -> Option<&IconEntry> {
+        self.icons.get(index)
+    }
+
     /// Removes a mod. Its leases are released first, so the other mods get their events.
     pub fn unregister(&mut self, index: ModIndex) {
         if self.registry.get(index).is_none() {
@@ -184,6 +200,7 @@ impl ManagerService {
         self.arbiter.release_all(index, &mut self.hub);
         self.captures.forget(index);
         self.menu.forget(index);
+        self.icons.forget(index);
         self.locale_readers.remove(index);
         self.cursor.remove(index);
         self.registry.unregister(index);

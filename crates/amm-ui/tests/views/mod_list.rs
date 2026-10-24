@@ -4,7 +4,7 @@ use egui::pos2;
 use levi_ui::tokens::{SpacingToken, spacing};
 use levi_ui::widget::Toggle;
 
-use crate::support::{FourMods, MINIMAP, PanelHarness};
+use crate::support::{FourMods, IconFixture, MINIMAP, PanelHarness};
 
 #[test]
 fn mod_row_click_selects_and_toggle_enables() {
@@ -59,4 +59,64 @@ fn pseudo_mod_list_stays_in_the_sidebar() {
 
     assert_eq!(long.chars().count(), 60);
     assert!(outside.is_empty(), "these texts pass the sidebar's right edge {}: {outside:?}", sidebar.right());
+}
+
+#[test]
+fn mod_rows_show_no_capability_chips() {
+    let harness = PanelHarness::new(FourMods::new(MINIMAP), "");
+    let sidebar = PanelLayout::sidebar(PanelHarness::SCREEN);
+
+    let chips: Vec<_> = harness
+        .texts()
+        .into_iter()
+        .filter(|(text, rect)| {
+            sidebar.contains(rect.center()) && ["Camera", "Input", "HUD", "Overlay", "World"].contains(&text.as_str())
+        })
+        .collect();
+
+    assert!(chips.is_empty(), "the sidebar paints these chips: {chips:?}");
+}
+
+#[test]
+fn manager_group_order_is_settings_keybinds_conflicts() {
+    let harness = PanelHarness::new(FourMods::new(MINIMAP), "");
+    let sidebar = PanelLayout::sidebar(PanelHarness::SCREEN);
+    let top = |label: &str| {
+        harness
+            .texts()
+            .into_iter()
+            .filter(|(text, rect)| text == label && sidebar.contains(rect.center()))
+            .map(|(_, rect)| rect.top())
+            .next()
+            .unwrap_or_else(|| panic!("{label} is painted in the sidebar"))
+    };
+
+    let (settings, keybinds, conflicts) = (top("Manager settings"), top("Keybinds"), top("Conflicts"));
+
+    assert!(settings < keybinds && keybinds < conflicts, "order tops: {settings} {keybinds} {conflicts}");
+}
+
+#[test]
+fn mod_with_icon_draws_image_and_no_letter() {
+    let plain = PanelHarness::new(FourMods::new(MINIMAP), "");
+    let mut mods = FourMods::new(MINIMAP);
+    mods.manager
+        .set_icon(mods.freecam, Some(IconFixture::solid(8, 8, [255, 0, 0, 255])))
+        .expect("freecam is registered");
+    let harness = PanelHarness::new(mods, "");
+    let sidebar = PanelLayout::sidebar(PanelHarness::SCREEN);
+
+    let in_sidebar =
+        |harness: &PanelHarness| harness.image_rects().into_iter().filter(|rect| sidebar.contains_rect(*rect)).count();
+
+    assert_eq!(in_sidebar(&plain), 0);
+    assert_eq!(in_sidebar(&harness), 1);
+    assert_eq!(harness.count("F"), plain.count("F") - 1);
+}
+
+#[test]
+fn mod_without_icon_draws_letter() {
+    let harness = PanelHarness::new(FourMods::new(MINIMAP), "");
+
+    assert!(harness.count("F") >= 1);
 }

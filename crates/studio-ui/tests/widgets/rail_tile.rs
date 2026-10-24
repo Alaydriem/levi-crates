@@ -41,8 +41,8 @@ fn fill(shapes: &[Shape]) -> Color32 {
 fn rail_tile_side_is_the_large_tile_token() {
     let mut headless = Headless::new();
 
-    let rect = headless
-        .rect(|ui| RailTile::show(ui, RailIcon::Glyph(Icon::Pause), &label("Pause"), RailTone::Normal, true));
+    let rect =
+        headless.rect(|ui| RailTile::show(ui, RailIcon::Glyph(Icon::Pause), &label("Pause"), RailTone::Normal, true));
 
     assert_eq!(RailTile::SIDE, <spacing::TileLarge as SpacingToken>::VALUE);
     assert_eq!(rect.size(), egui::vec2(RailTile::SIDE, RailTile::SIDE));

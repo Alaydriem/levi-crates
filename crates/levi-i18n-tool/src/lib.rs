@@ -3,6 +3,7 @@
 //! Ported from the bvc TypeScript tools.
 
 pub mod app;
+pub mod catalog;
 pub mod error;
 pub mod pack;
 pub mod plural;

@@ -1,6 +1,6 @@
 use amm_core::structs::frame::MenuScreen;
 use amm_ui::model::{PanelController, PanelIntent, PanelModel};
-use amm_ui::runtime::PanelLocale;
+use amm_ui::runtime::{IconTextures, PanelLocale};
 use amm_ui::views::PanelLayout;
 use egui::{Context, Ui, ViewportCommand};
 use levi_ui::font::FontSource;
@@ -18,6 +18,7 @@ pub struct ShotsApp {
     shot: usize,
     controller: PanelController,
     intents: Vec<PanelIntent>,
+    icons: IconTextures,
     runner: Option<ShotRunner>,
 }
 
@@ -31,7 +32,7 @@ impl ShotsApp {
         let shot = first.min(Shot::ALL.len() - 1);
         Self::stage(&mut scene, Shot::ALL[shot]);
         let controller = Shot::ALL[shot].controller(&scene);
-        Self { scene, shot, controller, intents: Vec::new(), runner }
+        Self { scene, shot, controller, intents: Vec::new(), icons: IconTextures::new(), runner }
     }
 
     // a menu shot closes the panel on the start screen; every other shot has the panel open
@@ -75,7 +76,8 @@ impl eframe::App for ShotsApp {
             GameBackdrop::paint_menu(ui.painter(), ui.max_rect());
         }
         let model = PanelModel::new(&self.scene.manager, Self::LEVILAMINA, shot.now_ms());
-        PanelLayout::show(ui, &model, &self.controller, &mut self.intents);
+        self.icons.sync(ui.ctx(), &model);
+        PanelLayout::show(ui, &model, &self.controller, &self.icons, &mut self.intents);
         self.apply_intents();
         let ctx = ui.ctx().clone();
         let saved = self.runner.as_mut().is_some_and(|runner| runner.tick(&ctx, shot.file_name()));

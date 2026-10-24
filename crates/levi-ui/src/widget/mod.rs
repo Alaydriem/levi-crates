@@ -36,7 +36,7 @@ mod toggle;
 mod tooltip;
 mod value_row;
 
-pub use avatar::{Avatar, AvatarSize};
+pub use avatar::{Avatar, AvatarImage, AvatarSize};
 pub use banner::{Banner, BannerTone};
 pub use button::{ButtonKind, IconButton, IconButtonSize, Leading, TextButton};
 pub use checkbox::Checkbox;

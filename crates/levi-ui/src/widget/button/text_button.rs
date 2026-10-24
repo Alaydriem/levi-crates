@@ -22,6 +22,13 @@ pub struct TextButton<'a> {
 impl<'a> TextButton<'a> {
     const STYLE: TextStyle = TextStyle::new(TypeSize::Help, FontFace::Semibold);
 
+    /// The label is a `Text`, so a raw string does not compile:
+    ///
+    /// ```compile_fail
+    /// use levi_ui::widget::{ButtonKind, TextButton};
+    ///
+    /// TextButton::new(ButtonKind::Primary, "Save");
+    /// ```
     pub fn new(kind: ButtonKind, text: Text) -> Self {
         Self { kind, text, leading: Leading::None, disabled: None, width: None }
     }

@@ -13,6 +13,8 @@ pub struct SceneSwitcherChipPage;
 impl SceneSwitcherChipPage {
     /// Sheet chrome: the caption column.
     const CAPTION: f32 = 160.0;
+    /// Sheet chrome: the row that holds one chip.
+    const ROW: egui::Vec2 = vec2(400.0, 30.0);
 
     pub fn show(ui: &mut Ui, _state: &mut GalleryState) {
         SheetGrid::page(ui, "Scene switcher chip (closed)", |ui| {
@@ -28,7 +30,7 @@ impl SceneSwitcherChipPage {
                     position,
                     open,
                 };
-                SheetGrid::labelled(ui, caption, Self::CAPTION, SheetGrid::COLUMN_GAP, vec2(400.0, 30.0), |ui, _| {
+                SheetGrid::labelled(ui, caption, Self::CAPTION, SheetGrid::COLUMN_GAP, Self::ROW, |ui, _| {
                     SceneSwitcherChip::new(&view).show(ui);
                 });
             }

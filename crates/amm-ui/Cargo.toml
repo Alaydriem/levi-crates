@@ -33,3 +33,4 @@ hcl-rs.workspace = true
 eframe.workspace = true
 image.workspace = true
 levi-i18n-tool = { path = "../levi-i18n-tool" }
+levi-rules = { path = "../levi-rules" }

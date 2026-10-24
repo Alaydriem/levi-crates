@@ -51,6 +51,7 @@ impl FakeTable {
             request_screenshot_layers: Some(Self::request_screenshot_layers),
             register_menu_entry: Some(Self::register_menu_entry),
             locale: Some(Self::locale),
+            set_icon: Some(Self::set_icon),
         }
     }
 
@@ -386,6 +387,13 @@ impl FakeTable {
             out_count.write(grant.count);
         }
         AmmStatus::Ok
+    }
+
+    unsafe extern "C" fn set_icon(_: AmmHandle, _: *const u8, png_len: usize) -> AmmStatus {
+        Self::with(|state| {
+            state.icon_calls.push(png_len);
+            state.icon_status
+        })
     }
 
     #[allow(clippy::too_many_arguments)]

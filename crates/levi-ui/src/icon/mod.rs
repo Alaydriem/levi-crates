@@ -64,10 +64,11 @@ pub enum Icon {
     Checklist,
     SkipBack,
     SkipForward,
+    Clear,
 }
 
 impl Icon {
-    pub const ALL: [Icon; 51] = [
+    pub const ALL: [Icon; 52] = [
         Self::Add,
         Self::Copy,
         Self::Hide,
@@ -119,6 +120,7 @@ impl Icon {
         Self::Checklist,
         Self::SkipBack,
         Self::SkipForward,
+        Self::Clear,
     ];
 
     pub fn shape(self) -> IconShape {
@@ -174,6 +176,7 @@ impl Icon {
             Self::Checklist => '\u{E9D5}',
             Self::SkipBack => '\u{E100}',
             Self::SkipForward => '\u{E101}',
+            Self::Clear => '\u{E894}',
         };
         IconShape::Font(code)
     }

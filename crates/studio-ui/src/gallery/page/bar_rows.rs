@@ -16,7 +16,7 @@ impl BarRows {
     pub fn page(ui: &mut Ui, body: impl FnOnce(&mut Ui)) {
         ui.painter().rect_filled(ui.ctx().content_rect(), 0, <color::BgApp as ColorToken>::VALUE);
         Frame::new().fill(<color::BgApp as ColorToken>::VALUE).inner_margin(Draw::margin(0.0, 0.0)).show(ui, |ui| {
-            ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
+            ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
             body(ui);
             ui.add_space(Self::CAPTION_TOP);
         });

@@ -3,7 +3,8 @@ use amm_abi::types::{AMM_ABI_MAJOR, AMM_ABI_MINOR, AmmApi};
 use super::{
     amm_acquire, amm_config_document, amm_held_by_other, amm_holder, amm_key_down, amm_locale, amm_log,
     amm_poll_events, amm_register, amm_register_menu_entry, amm_release, amm_request_screenshot,
-    amm_request_screenshot_layers, amm_set_cursor_mode, amm_set_setting, amm_texture_budget, amm_unregister,
+    amm_request_screenshot_layers, amm_set_cursor_mode, amm_set_icon, amm_set_setting, amm_texture_budget,
+    amm_unregister,
 };
 
 static API: AmmApi = AmmApi {
@@ -27,6 +28,7 @@ static API: AmmApi = AmmApi {
     request_screenshot_layers: Some(amm_request_screenshot_layers),
     register_menu_entry: Some(amm_register_menu_entry),
     locale: Some(amm_locale),
+    set_icon: Some(amm_set_icon),
 };
 
 /// The function table for `abi_major`, or null when this manager does not speak that major version. The shim

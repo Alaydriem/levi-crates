@@ -1,5 +1,7 @@
+mod icon_fixture;
 mod panel_harness;
 
+pub use icon_fixture::IconFixture;
 pub use panel_harness::PanelHarness;
 
 use std::path::Path;

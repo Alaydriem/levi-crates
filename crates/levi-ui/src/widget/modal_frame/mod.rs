@@ -79,7 +79,7 @@ impl ModalFrame {
         let shown = frame.show(ui, |ui| {
             let content = width - border * 2.0;
             ui.set_width(content);
-            ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
+            ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
             let closed = self.header(ui, content);
             Self::divider(ui);
             let header_height = ui.min_rect().height();

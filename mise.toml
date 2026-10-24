@@ -15,9 +15,12 @@ run = [
 ]
 
 [tasks.test]
-description = "Every workspace test through cargo-nextest"
+description = "Every workspace test through cargo-nextest, then the doctests that nextest skips (the compile_fail checks that widgets take Text, not &str)"
 dir = "{{config_root}}"
-run = "cargo nextest run --workspace --no-tests=pass"
+run = [
+  "cargo nextest run --workspace --no-tests=pass",
+  "cargo test --doc -p levi-i18n -p levi-ui -p studio-ui",
+]
 
 [tasks.header]
 description = "Regenerates include/alaydriem_mod_manager.h from amm-abi and include/amm_host.h from amm-ffi"

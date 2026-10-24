@@ -16,6 +16,8 @@ impl TimelineTracksPage {
     const COLUMN_INSET: f32 = 24.0;
     /// The Original example's height: the fixed rows and a few empty lanes.
     const ORIGINAL: f32 = 250.0;
+    /// Paper `6OM-0`: the box that is being dragged across the camera and FOV lanes.
+    const DRAG_BOX: egui::Vec2 = vec2(470.0, 92.0);
 
     pub fn track_headers(ui: &mut Ui, _state: &mut GalleryState) {
         BarRows::page(ui, |ui| {
@@ -91,7 +93,7 @@ impl TimelineTracksPage {
             ViewerSamples::row(ui, "DRAGGING A BOX ACROSS CAMERA AND FOV", |ui| {
                 let rows = Self::rows(ui, &pair());
                 let left = rows.left() + TrackHeader::WIDTH;
-                let drag = Rect::from_min_size(pos2(left + 432.0 - 222.0, rows.top() + 14.0), vec2(470.0, 92.0));
+                let drag = Rect::from_min_size(pos2(left + 432.0 - 222.0, rows.top() + 14.0), Self::DRAG_BOX);
                 BoxSelect::new(drag).paint(ui.painter());
             });
             ViewerSamples::row(ui, "AFTER RELEASE · 5 KEYS ON 2 TRACKS", |ui| {

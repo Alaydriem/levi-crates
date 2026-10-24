@@ -6,6 +6,7 @@ mod icon;
 mod id;
 mod message;
 mod motion;
+mod rules;
 mod snapshot;
 mod state;
 mod support;

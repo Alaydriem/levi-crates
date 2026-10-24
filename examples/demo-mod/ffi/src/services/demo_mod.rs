@@ -39,6 +39,7 @@ pub struct DemoMod {
 
 impl DemoMod {
     const DESCRIPTOR: &'static str = include_str!("../../descriptor.hcl");
+    const ICON: &'static [u8] = include_bytes!("../../icon.png");
     const SECOND_DIR: &'static str = "second";
     const SHOTS_DIR: &'static str = "shots";
     const SHOT_FAILED: &'static str = "Screenshot failed";
@@ -52,6 +53,9 @@ impl DemoMod {
         }
         let cell = DemoCell::new();
         let link = ManagerLink::new(table, Self::DESCRIPTOR, config_dir, DemoUi::new(cell.clone()))?;
+        if let Err(error) = link.set_icon(Self::ICON) {
+            curia::warn!("icon not set", { error: error.to_string() });
+        }
         let mut demo = Self {
             link,
             cell,

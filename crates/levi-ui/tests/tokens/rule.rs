@@ -1,6 +1,6 @@
 use egui::epaint::Shadow;
 use egui::{Color32, CornerRadius, Rect, Shape, pos2};
-use levi_ui::tokens::rule::{Elevation, FocusRing, SoftFill};
+use levi_ui::tokens::rule::{Elevation, FocusRing, SoftFill, UnderEdge};
 use levi_ui::tokens::{ColorToken, color};
 
 use crate::support::PaintCapture;
@@ -46,6 +46,16 @@ fn floating_is_0_8_24() {
     assert_eq!(shadow.blur, 24);
     assert_eq!(shadow.spread, 0);
     assert_eq!(shadow.color, <color::Shadow as ColorToken>::VALUE);
+}
+
+#[test]
+fn under_edge_is_one_flat_shadow_below() {
+    let shadow = UnderEdge::shadow(2);
+    assert_eq!(shadow.offset, [0, 2]);
+    assert_eq!(shadow.blur, 0);
+    assert_eq!(shadow.spread, 0);
+    assert_eq!(shadow.color, <color::Shadow as ColorToken>::VALUE);
+    assert_eq!(UnderEdge::shadow(3).offset, [0, 3]);
 }
 
 #[test]

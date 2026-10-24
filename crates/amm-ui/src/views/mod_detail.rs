@@ -9,6 +9,7 @@ use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
 use levi_ui::widget::{Chip, ChipKind, ChipTone, PageHeader, PageHeaderLead, ScrollBar, TabRow, Toggle};
 
 use crate::model::{PanelAction, PanelController, PanelIntent, PanelModel, PanelTab};
+use crate::runtime::IconTextures;
 use crate::views::{CapabilitiesTab, GeneralTab, KeybindsTab};
 use crate::{AmmId, AmmMessage};
 
@@ -33,6 +34,7 @@ impl ModDetailView {
         ui: &mut Ui,
         model: &PanelModel,
         controller: &PanelController,
+        icons: &IconTextures,
         index: ModIndex,
         out: &mut Vec<PanelIntent>,
     ) {
@@ -40,7 +42,7 @@ impl ModDetailView {
             return;
         };
         ui.spacing_mut().item_spacing.y = 0.0;
-        Self::header(ui, model, registered, out);
+        Self::header(ui, model, registered, icons, out);
         ui.add_space(Self::TABS_TOP);
         let tab = controller.tab();
         Self::tabs(ui, tab, out);
@@ -55,7 +57,13 @@ impl ModDetailView {
 
     // the page form of the header: avatar, name, the id, version and author, the conflict chip,
     // the Enabled label and the toggle
-    fn header(ui: &mut Ui, model: &PanelModel, registered: &RegisteredMod, out: &mut Vec<PanelIntent>) {
+    fn header(
+        ui: &mut Ui,
+        model: &PanelModel,
+        registered: &RegisteredMod,
+        icons: &IconTextures,
+        out: &mut Vec<PanelIntent>,
+    ) {
         let index = registered.index;
         let descriptor = &registered.descriptor;
         let name = UserText::from_model(descriptor.display_name.clone());
@@ -67,7 +75,7 @@ impl ModDetailView {
             Text::format(AmmMessage::ByAuthor, Args::new().user("author", author)),
         ];
         let badge = u64::try_from(model.clash_report().badge_count(index)).unwrap_or(u64::MAX);
-        PageHeader::new(PageHeaderLead::Avatar(name.clone()), Text::user(name))
+        PageHeader::new(PageHeaderLead::Avatar(name.clone(), icons.image(index)), Text::user(name))
             .meta(meta)
             .trailing(|ui| {
                 ui.spacing_mut().item_spacing.x = <spacing::M as SpacingToken>::VALUE;

@@ -23,6 +23,7 @@ hcl-edit.workspace = true
 thiserror.workspace = true
 curia.workspace = true
 bytemuck.workspace = true
+png.workspace = true
 arc-swap.workspace = true
 egui = { workspace = true, optional = true }
 

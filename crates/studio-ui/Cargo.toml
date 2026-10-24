@@ -38,4 +38,5 @@ gallery = ["levi-ui/gallery"]
 eframe.workspace = true
 egui_kittest = { workspace = true, features = ["snapshot", "wgpu"] }
 levi-i18n-tool = { path = "../levi-i18n-tool" }
+levi-rules = { path = "../levi-rules" }
 studio-ui = { path = ".", features = ["gallery"] }

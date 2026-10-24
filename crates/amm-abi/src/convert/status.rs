@@ -1,4 +1,4 @@
-use amm_core::errors::{CaptureError, DescriptorError, LinkError, ManagerError, RegistryError, StoreError};
+use amm_core::errors::{CaptureError, DescriptorError, IconError, LinkError, ManagerError, RegistryError, StoreError};
 
 use crate::types::AmmStatus;
 
@@ -41,6 +41,12 @@ impl From<&CaptureError> for AmmStatus {
             CaptureError::InvalidPath => AmmStatus::InvalidArgument,
             CaptureError::Busy => AmmStatus::Busy,
         }
+    }
+}
+
+impl From<&IconError> for AmmStatus {
+    fn from(_: &IconError) -> Self {
+        AmmStatus::InvalidArgument
     }
 }
 

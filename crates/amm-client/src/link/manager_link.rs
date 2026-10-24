@@ -1,8 +1,10 @@
 use std::ffi::c_void;
+use std::io::Read;
 use std::path::Path;
 
 use amm_abi::types::{AmmCallbacks, AmmCapability, AmmHandle, AmmScreenshotLayers, AmmStatus};
 use amm_core::errors::LinkError;
+use amm_core::services::icon::IconDecoder;
 use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::ModEvent;
@@ -75,6 +77,12 @@ impl ManagerLink {
     #[cfg(feature = "egui")]
     pub fn set_localizer(&self, localizer: std::sync::Arc<levi_i18n::localize::Localizer>) {
         self.locale.set(localizer);
+    }
+
+    /// The localizer the mod's layers draw with now: English until `set_localizer`.
+    #[cfg(feature = "egui")]
+    pub fn localizer(&self) -> std::sync::Arc<levi_i18n::localize::Localizer> {
+        self.locale.get()
     }
 
     /// Registers the mod from its descriptor text with no frame and no textures-lost callback, for a mod that
@@ -382,6 +390,45 @@ impl ManagerLink {
             AmmStatus::Ok => Ok(TextureGrant { bytes, count }),
             other => Err(LinkError::from(other)),
         }
+    }
+
+    /// Sets the mod's icon from PNG bytes: at most `IconDecoder::MAX_BYTES`, each side 1 to 256 px, first frame
+    /// only. A refused icon keeps the one shown before. A manager older than ABI 1.6 is `Unsupported`.
+    pub fn set_icon(&self, png: &[u8]) -> Result<(), LinkError> {
+        let Some(set_icon) = self.table.api().set_icon else {
+            return Err(LinkError::from(AmmStatus::Unsupported));
+        };
+        // SAFETY: the PNG bytes live for the call and the manager copies what it keeps; the handle is this link's
+        // until drop
+        let status = unsafe { set_icon(self.handle, png.as_ptr(), png.len()) };
+        match status {
+            AmmStatus::Ok => Ok(()),
+            other => Err(LinkError::from(other)),
+        }
+    }
+
+    /// `set_icon` over the PNG file at `path`. The mod reads the file here; the manager never opens it. A file
+    /// larger than `IconDecoder::MAX_BYTES`, an empty file and a file that cannot be read are `IconFile`.
+    /// To clear the icon, call `set_icon` with no bytes.
+    pub fn set_icon_file(&self, path: &Path) -> Result<(), LinkError> {
+        let limit = IconDecoder::MAX_BYTES as u64;
+        let file_error = |reason: String| LinkError::IconFile { reason };
+        let mut file = std::fs::File::open(path).map_err(|error| file_error(error.to_string()))?;
+        let size = file.metadata().map_err(|error| file_error(error.to_string()))?.len();
+        if size > limit {
+            return Err(file_error(format!("{size} bytes is over the {limit} byte limit")));
+        }
+        let mut png = Vec::new();
+        std::io::Read::take(&mut file, limit + 1)
+            .read_to_end(&mut png)
+            .map_err(|error| file_error(error.to_string()))?;
+        if png.len() as u64 > limit {
+            return Err(file_error(format!("more than {limit} bytes")));
+        }
+        if png.is_empty() {
+            return Err(file_error("the file is empty".to_owned()));
+        }
+        self.set_icon(&png)
     }
 
     // The id text of a holder, or `None` for an empty or non-UTF-8 id.

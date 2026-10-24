@@ -5,6 +5,7 @@ use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
 use levi_ui::widget::{Surface, SurfaceLevel};
 
 use crate::model::{PanelController, PanelIntent, PanelModel, PanelPage};
+use crate::runtime::IconTextures;
 use crate::views::{
     ConflictsView, CornerRowView, HeaderView, KeybindsPage, ManagerSettingsView, ModDetailView, ModListView, ToastsView,
 };
@@ -29,6 +30,7 @@ impl PanelLayout {
         ui: &mut Ui,
         model: &PanelModel,
         controller: &PanelController,
+        icons: &IconTextures,
         out: &mut Vec<PanelIntent>,
     ) -> Option<Rect> {
         let screen = ui.max_rect();
@@ -36,7 +38,7 @@ impl PanelLayout {
         if model.panel_open() {
             Draw::fill(ui.painter(), screen, Corner::None, <color::BgOverlay as ColorToken>::VALUE);
             ui.allocate_rect(screen, Sense::click());
-            Self::panel(ui, screen, model, controller, out);
+            Self::panel(ui, screen, model, controller, icons, out);
             panel = Some(Self::panel_rect(screen));
         }
         let corner = if model.menu_button_visible() { CornerRowView::show(ui, screen, model, out) } else { None };
@@ -50,7 +52,7 @@ impl PanelLayout {
             (screen.width() - 2.0 * Self::SCREEN_MARGIN).min(Self::PANEL_MAX.0),
             (screen.height() - 2.0 * Self::SCREEN_MARGIN).min(Self::PANEL_MAX.1),
         );
-        Rect::from_center_size(screen.center(), size.max(vec2(0.0, 0.0)))
+        Rect::from_center_size(screen.center(), size.max(egui::Vec2::ZERO))
     }
 
     /// The sidebar's content on a screen: under the header, inside the sidebar's padding.
@@ -83,7 +85,14 @@ impl PanelLayout {
         }
     }
 
-    fn panel(ui: &mut Ui, screen: Rect, model: &PanelModel, controller: &PanelController, out: &mut Vec<PanelIntent>) {
+    fn panel(
+        ui: &mut Ui,
+        screen: Rect,
+        model: &PanelModel,
+        controller: &PanelController,
+        icons: &IconTextures,
+        out: &mut Vec<PanelIntent>,
+    ) {
         let rect = Self::panel_rect(screen);
         let painter = ui.painter().clone();
         Surface::paint(&painter, rect, SurfaceLevel::Panel, Elevation::Floating);
@@ -97,10 +106,10 @@ impl PanelLayout {
             Rect::from_min_max(pos2(divider_x, header.bottom()), pos2(divider_x + line, rect.bottom() - line));
         Draw::fill(&painter, divider, Corner::None, <color::Line as ColorToken>::VALUE);
         let page = Self::page(model, controller);
-        ModListView::show(&mut ui.new_child(UiBuilder::new().max_rect(Self::sidebar(screen))), model, page, out);
+        ModListView::show(&mut ui.new_child(UiBuilder::new().max_rect(Self::sidebar(screen))), model, page, icons, out);
         let mut pane_ui = ui.new_child(UiBuilder::new().max_rect(Self::pane(screen)));
         match page {
-            PanelPage::Mod(index) => ModDetailView::show(&mut pane_ui, model, controller, index, out),
+            PanelPage::Mod(index) => ModDetailView::show(&mut pane_ui, model, controller, icons, index, out),
             PanelPage::Conflicts => ConflictsView::show(&mut pane_ui, model, out),
             PanelPage::Keybinds => KeybindsPage::show(&mut pane_ui, model, controller, out),
             PanelPage::ManagerSettings => ManagerSettingsView::show(&mut pane_ui, model, out),

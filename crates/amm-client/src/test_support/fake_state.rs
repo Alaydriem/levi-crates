@@ -44,6 +44,9 @@ pub struct FakeState {
     // The language code `locale` answers with; empty is English. `locale_reads` counts the calls
     pub locale: &'static str,
     pub locale_reads: u32,
+    // The length in bytes of each `set_icon` call, and the status it answers with
+    pub icon_calls: Vec<usize>,
+    pub icon_status: AmmStatus,
 }
 
 impl FakeState {
@@ -75,6 +78,8 @@ impl FakeState {
             menu_entry_id: 1,
             locale: "",
             locale_reads: 0,
+            icon_calls: Vec::new(),
+            icon_status: AmmStatus::Ok,
         }
     }
 

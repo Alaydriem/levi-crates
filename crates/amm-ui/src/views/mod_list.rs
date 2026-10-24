@@ -1,5 +1,4 @@
 use amm_core::services::settings::ChordText;
-use amm_core::structs::descriptor::{Capability, ClaimMode};
 use amm_core::structs::registry::RegisteredMod;
 use egui::{Align2, Painter, Rect, ScrollArea, Ui, pos2};
 use levi_i18n::text::{Args, Text, UserText};
@@ -7,15 +6,14 @@ use levi_ui::draw::{Draw, TextFit, TextStyle, TypeSize};
 use levi_ui::font::FontFace;
 use levi_ui::icon::Icon;
 use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
-use levi_ui::widget::{
-    Avatar, AvatarSize, Chip, ChipKind, ChipTone, KeyCapSize, KeyChord, ListRow, NavEntry, ScrollBar, SectionHeader,
-};
+use levi_ui::widget::{Avatar, AvatarSize, KeyCapSize, KeyChord, ListRow, NavEntry, ScrollBar, SectionHeader};
 
-use crate::model::{CapabilityText, PanelAction, PanelIntent, PanelModel, PanelPage};
+use crate::model::{PanelAction, PanelIntent, PanelModel, PanelPage};
+use crate::runtime::IconTextures;
 use crate::{AmmId, AmmMessage};
 
-/// The left column: the installed mods, then the Manager group with Conflicts, Keybinds and Manager
-/// settings, and the panel toggle's chord at the bottom.
+/// The left column: the installed mods, then the Manager group with Manager settings, Keybinds and
+/// Conflicts, and the panel toggle's chord at the bottom.
 pub struct ModListView;
 
 impl ModListView {
@@ -29,7 +27,7 @@ impl ModListView {
     const HINT_GAP: f32 = 6.0;
     const HINT: TextStyle = TextStyle::new(TypeSize::Note, FontFace::Regular);
 
-    pub fn show(ui: &mut Ui, model: &PanelModel, page: PanelPage, out: &mut Vec<PanelIntent>) {
+    pub fn show(ui: &mut Ui, model: &PanelModel, page: PanelPage, icons: &IconTextures, out: &mut Vec<PanelIntent>) {
         let area = ui.max_rect();
         ui.spacing_mut().item_spacing.y = 0.0;
         SectionHeader::new(Text::message(AmmMessage::InstalledModsTitle)).show(ui);
@@ -38,17 +36,16 @@ impl ModListView {
         ScrollBar::show(ui, list, true, |ui| {
             ui.spacing_mut().item_spacing.y = Self::ROW_GAP;
             for registered in model.mods() {
-                Self::row(ui, model, registered, page == PanelPage::Mod(registered.index), out);
+                Self::row(ui, model, registered, page == PanelPage::Mod(registered.index), icons, out);
             }
         });
         ui.add_space(Self::RULE_GAP);
         Draw::divider(ui.painter(), area.x_range(), ui.cursor().top(), <color::Line as ColorToken>::VALUE);
         ui.add_space(Self::RULE_GAP + <spacing::Divider as SpacingToken>::VALUE);
         SectionHeader::new(Text::message(AmmMessage::ManagerTitle)).show(ui);
-        let count = u32::try_from(model.clash_report().conflict_count()).unwrap_or(u32::MAX);
-        let conflicts = NavEntry::new(Icon::Warning, Text::message(AmmMessage::Conflicts)).count(count);
-        if conflicts.selected(page == PanelPage::Conflicts).show(ui).clicked() {
-            out.push(PanelIntent::Action(PanelAction::Select(None)));
+        let settings = NavEntry::new(Icon::Settings, Text::message(AmmMessage::ManagerSettings));
+        if settings.selected(page == PanelPage::ManagerSettings).show(ui).clicked() {
+            out.push(PanelIntent::ShowPage(PanelPage::ManagerSettings));
         }
         ui.add_space(Self::NAV_GAP);
         let keybinds = NavEntry::new(Icon::Keyboard, Text::message(AmmMessage::Keybinds));
@@ -56,9 +53,10 @@ impl ModListView {
             out.push(PanelIntent::ShowPage(PanelPage::Keybinds));
         }
         ui.add_space(Self::NAV_GAP);
-        let settings = NavEntry::new(Icon::Settings, Text::message(AmmMessage::ManagerSettings));
-        if settings.selected(page == PanelPage::ManagerSettings).show(ui).clicked() {
-            out.push(PanelIntent::ShowPage(PanelPage::ManagerSettings));
+        let count = u32::try_from(model.clash_report().conflict_count()).unwrap_or(u32::MAX);
+        let conflicts = NavEntry::new(Icon::Warning, Text::message(AmmMessage::Conflicts)).count(count);
+        if conflicts.selected(page == PanelPage::Conflicts).show(ui).clicked() {
+            out.push(PanelIntent::Action(PanelAction::Select(None)));
         }
         Self::hint(ui.painter(), area, model);
     }
@@ -70,17 +68,24 @@ impl ModListView {
         rule + SectionHeader::height() + entries + KeyCapSize::Small.height()
     }
 
-    fn row(ui: &mut Ui, model: &PanelModel, registered: &RegisteredMod, selected: bool, out: &mut Vec<PanelIntent>) {
+    fn row(
+        ui: &mut Ui,
+        model: &PanelModel,
+        registered: &RegisteredMod,
+        selected: bool,
+        icons: &IconTextures,
+        out: &mut Vec<PanelIntent>,
+    ) {
         let index = registered.index;
         let descriptor = &registered.descriptor;
         let name = UserText::from_model(descriptor.display_name.clone());
         let version = UserText::from_model(descriptor.version.clone());
         let badge = u32::try_from(model.clash_report().badge_count(index)).unwrap_or(u32::MAX);
         let mut enabled = registered.enabled;
-        let response = ListRow::new(Avatar::new(&name, AvatarSize::Regular), Text::user(name))
+        let avatar = Avatar::new(&name, AvatarSize::Regular).image(icons.image(index));
+        let response = ListRow::new(avatar, Text::user(name))
             .version(Text::format(AmmMessage::Version, Args::new().user("version", version)))
             .badge(badge)
-            .chips(Self::chips(registered))
             .toggle(&mut enabled)
             .selected(selected)
             .off(!registered.enabled)
@@ -90,22 +95,6 @@ impl ModListView {
         } else if response.row.clicked() {
             out.push(PanelIntent::Action(PanelAction::Select(Some(index))));
         }
-    }
-
-    // one chip per claimed capability in `Capability::ALL` order; an exclusive claim has a lock
-    fn chips(registered: &RegisteredMod) -> Vec<Chip> {
-        let claims = &registered.descriptor.claims;
-        Capability::ALL
-            .iter()
-            .filter_map(|cap| claims.iter().find(|claim| claim.capability == *cap))
-            .map(|claim| {
-                let text = Text::message(CapabilityText::chip(claim.capability));
-                match claim.mode {
-                    ClaimMode::Exclusive => Chip::new(ChipKind::Display(ChipTone::Accent), text).icon(Icon::Lock),
-                    _ => Chip::new(ChipKind::Display(ChipTone::Neutral), text),
-                }
-            })
-            .collect()
     }
 
     // the panel toggle's chord, one cap per key, then "opens and closes this panel", at the bottom

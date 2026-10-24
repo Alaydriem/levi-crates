@@ -8,4 +8,6 @@ pub enum LinkError {
     Status(i32),
     #[error("a JSON document is not valid: {reason}")]
     Json { reason: String },
+    #[error("the icon file cannot be used: {reason}")]
+    IconFile { reason: String },
 }

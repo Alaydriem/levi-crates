@@ -4,6 +4,7 @@ pub mod descriptor;
 #[cfg(feature = "egui")]
 pub mod egui_bridge;
 pub mod event;
+pub mod icon;
 pub mod input;
 pub mod lease;
 pub mod manager;
@@ -23,6 +24,7 @@ pub use descriptor::DescriptorChecker;
 #[cfg(feature = "egui")]
 pub use egui_bridge::{KeyMap, MeshFlattener, RawInputBuilder};
 pub use event::{EventHub, EventQueue};
+pub use icon::IconDecoder;
 pub use lease::LeaseArbiter;
 pub use manager::ManagerService;
 pub use menu::MenuEntries;

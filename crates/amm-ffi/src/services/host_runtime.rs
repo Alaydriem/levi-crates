@@ -15,6 +15,7 @@ use amm_core::structs::capture::ScreenshotLayers;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::ModEvent;
 use amm_core::structs::frame::{FrameInputData, LayerKind, UiEvent, UiEventKind};
+use amm_core::structs::icon::ModIcon;
 use amm_core::structs::input::{InputEvent, Modifiers, RouteDecision};
 use amm_core::structs::lease::AcquireOutcome;
 use amm_core::structs::manager::TextureGrant;
@@ -323,6 +324,12 @@ impl HostRuntime {
     pub fn set_locale(&mut self, code: &str) {
         self.manager.set_locale(code);
         self.panel.set_locale(code);
+    }
+
+    /// Sets or clears the icon of a mod. A handle that names no live registration is `UnknownHandle`.
+    pub fn set_icon(&mut self, handle: AmmHandle, icon: Option<ModIcon>) -> Result<(), AmmStatus> {
+        let index = self.index(handle)?;
+        self.manager.set_icon(index, icon).map_err(|error| AmmStatus::from(&error))
     }
 
     pub fn set_cursor_mode(&mut self, handle: AmmHandle, on: bool) -> Result<(), AmmStatus> {

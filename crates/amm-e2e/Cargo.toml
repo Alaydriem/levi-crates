@@ -23,4 +23,5 @@ curia.workspace = true
 chrono.workspace = true
 egui.workspace = true
 hcl-rs.workspace = true
+png.workspace = true
 tempfile.workspace = true

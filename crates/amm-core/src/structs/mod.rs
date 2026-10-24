@@ -3,6 +3,7 @@ pub mod clash;
 pub mod descriptor;
 pub mod event;
 pub mod frame;
+pub mod icon;
 pub mod input;
 pub mod lease;
 pub mod manager;

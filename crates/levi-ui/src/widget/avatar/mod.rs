@@ -1,7 +1,10 @@
+mod avatar_image;
 mod avatar_size;
 
+pub use avatar_image::AvatarImage;
 pub use avatar_size::AvatarSize;
 
+use egui::epaint::RectShape;
 use egui::{Color32, Painter, Rect, Response, Sense, Ui, vec2};
 use levi_i18n::text::UserText;
 
@@ -14,6 +17,7 @@ pub struct Avatar {
     letter: String,
     size: AvatarSize,
     off: bool,
+    image: Option<AvatarImage>,
 }
 
 impl Avatar {
@@ -23,12 +27,18 @@ impl Avatar {
             Some(first) => first.to_uppercase().collect(),
             None => "?".to_owned(),
         };
-        Self { letter, size, off: false }
+        Self { letter, size, off: false, image: None }
     }
 
     /// The disabled-mod look: the letter in `--color-text-faint`.
     pub fn off(mut self, off: bool) -> Self {
         self.off = off;
+        self
+    }
+
+    /// A picture in place of the letter. It fills the tile to its edges, clipped to the corner.
+    pub fn image(mut self, image: Option<AvatarImage>) -> Self {
+        self.image = image;
         self
     }
 
@@ -46,6 +56,13 @@ impl Avatar {
 
     pub fn paint(&self, painter: &Painter, rect: Rect) {
         let corner = self.size.corner();
+        if let Some(image) = &self.image {
+            Draw::fill(painter, rect, corner, <color::BgField as ColorToken>::VALUE);
+            let tint = if self.off { Color32::WHITE.gamma_multiply(0.4) } else { Color32::WHITE };
+            painter.add(RectShape { brush: Some(image.brush()), ..RectShape::filled(rect, corner.radius(rect), tint) });
+            Draw::stroke(painter, rect, corner, <color::LineStrong as ColorToken>::VALUE);
+            return;
+        }
         Draw::fill(painter, rect, corner, <color::BgField as ColorToken>::VALUE);
         Draw::stroke(painter, rect, corner, <color::LineStrong as ColorToken>::VALUE);
         let colour = self.letter_color();

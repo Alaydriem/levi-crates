@@ -1,10 +1,10 @@
-use egui::epaint::Shadow;
 use egui::{Color32, Context, Painter, Rect, vec2};
 use levi_i18n::text::Text;
 
 use super::KeyCapSize;
 use crate::draw::{Corner, Draw, TextFit};
 use crate::text::UiText;
+use crate::tokens::rule::UnderEdge;
 use crate::tokens::{ColorToken, SpacingToken, color, spacing};
 
 /// One key of a key chord (Paper: Chip sheet, "Key chord"; Tooltip sheet, shortcut).
@@ -26,12 +26,7 @@ impl KeyCap {
     pub fn paint(&self, painter: &Painter, rect: Rect) {
         let (fill, border, text) = self.colors();
         if self.size == KeyCapSize::Regular {
-            let edge = Shadow {
-                offset: [0, Self::UNDER_EDGE],
-                blur: 0,
-                spread: 0,
-                color: <color::Shadow as ColorToken>::VALUE,
-            };
+            let edge = UnderEdge::shadow(Self::UNDER_EDGE);
             painter.add(edge.as_shape(rect, Corner::Small.radius(rect)));
         }
         Draw::fill(painter, rect, Corner::Small, fill);

@@ -1,0 +1,21 @@
+[package]
+name = "levi-rules"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+autotests = false
+
+[lib]
+name = "levi_rules"
+path = "src/lib.rs"
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

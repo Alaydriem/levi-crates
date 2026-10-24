@@ -70,8 +70,11 @@ dependencies = [
  "amm-client",
  "amm-core",
  "amm-ffi",
+ "amm-ui",
  "criterion",
  "egui",
+ "levi-ui",
+ "png",
  "tempfile",
 ]
 
@@ -91,6 +94,7 @@ dependencies = [
  "levi-ui",
  "serde",
  "serde_json",
+ "tempfile",
  "tracing",
  "tracing-subscriber",
  "windows-sys 0.61.2",
@@ -107,6 +111,7 @@ dependencies = [
  "egui",
  "hcl-edit",
  "hcl-rs",
+ "png",
  "serde",
  "thiserror 2.0.21",
 ]
@@ -124,6 +129,7 @@ dependencies = [
  "curia",
  "egui",
  "hcl-rs",
+ "png",
  "tempfile",
 ]
 
@@ -140,6 +146,7 @@ dependencies = [
  "curia",
  "hcl-rs",
  "levi-ui",
+ "png",
  "serde_json",
  "tempfile",
  "time",
@@ -171,6 +178,7 @@ dependencies = [
  "image",
  "levi-i18n",
  "levi-i18n-tool",
+ "levi-rules",
  "levi-ui",
 ]
 
@@ -1703,6 +1711,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "levi-rules"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
 name = "levi-ui"
 version = "0.1.0"
 dependencies = [
@@ -1712,8 +1727,10 @@ dependencies = [
  "egui_kittest",
  "levi-i18n",
  "levi-i18n-tool",
+ "levi-rules",
  "levi-ui",
  "levi-ui-gen",
+ "log",
  "serde_json",
  "tempfile",
 ]
@@ -2959,6 +2976,7 @@ dependencies = [
  "egui_kittest",
  "levi-i18n",
  "levi-i18n-tool",
+ "levi-rules",
  "levi-ui",
  "studio-ui",
 ]

@@ -3,6 +3,7 @@ use amm_core::services::manager::ManagerService;
 use amm_core::services::settings::ChordText;
 use amm_core::structs::clash::{ClashKind, ClashReport};
 use amm_core::structs::descriptor::{Capability, Chord, ClaimMode, KeyScope, KeybindDecl, SettingField};
+use amm_core::structs::icon::IconEntry;
 use amm_core::structs::menu::MenuEntry;
 use amm_core::structs::registry::{ModIndex, RegisteredMod};
 use amm_core::structs::settings::SettingsDraft;
@@ -84,6 +85,11 @@ impl<'a> PanelModel<'a> {
     /// around it are dropped, as `LocaleSetting::from_code` drops them.
     pub fn language(&self) -> &'a str {
         self.manager.locale().trim()
+    }
+
+    /// The icon the mod in `index` set, if any.
+    pub fn icon(&self, index: ModIndex) -> Option<&'a IconEntry> {
+        self.manager.icon(index)
     }
 
     pub fn keybind(&self, index: ModIndex, action: u16) -> Option<&'a KeybindDecl> {

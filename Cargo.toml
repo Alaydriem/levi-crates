@@ -6,6 +6,7 @@ members = [
   "crates/levi-ui-gen",
   "crates/levi-i18n",
   "crates/levi-i18n-tool",
+  "crates/levi-rules",
   "crates/amm-core",
   "crates/amm-abi",
   "crates/amm-store",
@@ -36,6 +37,8 @@ hcl-edit = "=0.9.7"
 curia = "=0.2.2"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "std"] }
 tracing = "0.1.44"
+# egui writes its warnings through `log`; levi-ui's tests read them
+log = "0.4.34"
 tracing-subscriber = { version = "0.3.23", default-features = false, features = ["registry", "std"] }
 time = "0.3.55"
 thiserror = "2.0.21"
@@ -48,6 +51,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_System_LibraryLoader"] }
 studio-ui = { path = "crates/studio-ui" }
 levi-ui = { path = "crates/levi-ui" }
 levi-i18n = { path = "crates/levi-i18n" }
+levi-rules = { path = "crates/levi-rules" }
 icu_plurals = "2.2"
 icu_locale_core = "2.2"
 # `sync` makes ICU data payloads use Arc, so a Localizer can live in egui's context data

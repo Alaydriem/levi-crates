@@ -105,7 +105,10 @@ fn a_layer_context_has_the_levi_ui_faces_only() {
 
     let families = families.lock().map(|families| families.clone()).unwrap_or_default();
     assert!(families.contains(&FontFace::Semibold.family()), "{families:?}");
-    assert!(!families.contains(&FontFamily::Name("ui-semibold".into())), "the old studio theme is installed");
+    assert!(
+        !families.contains(&FontFamily::Name("ui-semibold".into())),
+        "a font family from before levi-ui is installed"
+    );
 }
 
 #[test]

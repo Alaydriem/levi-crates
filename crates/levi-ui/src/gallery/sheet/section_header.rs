@@ -25,7 +25,7 @@ impl SectionHeaderSheet {
                 .show(ui, |ui| {
                     let border = <spacing::Border as SpacingToken>::VALUE;
                     ui.set_width(Self::INSPECTOR_WIDTH - border * 2.0);
-                    ui.spacing_mut().item_spacing = vec2(0.0, 0.0);
+                    ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
                     Self::section(ui, "SCENE", false, Self::scene_field);
                     Self::section(ui, "RANGE", true, |ui| Self::value_row(ui, "Length", "8.60 s · 172 ticks"));
                     Self::section(ui, "CAMERA PATH", true, |ui| Self::value_row(ui, "Keys", "6"));

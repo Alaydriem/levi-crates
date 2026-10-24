@@ -11,7 +11,7 @@ use levi_ui::text::UiLocale;
 use levi_ui::theme::Theme;
 
 use crate::model::{PanelAction, PanelController, PanelIntent, PanelModel};
-use crate::runtime::PanelLocale;
+use crate::runtime::{IconTextures, PanelLocale};
 use crate::views::PanelLayout;
 
 /// The manager's own egui pass: the panel, the toasts and the menu button. It owns the
@@ -25,6 +25,8 @@ pub struct PanelRuntime {
     ctx: Context,
     builder: RawInputBuilder,
     controller: PanelController,
+    // one texture per mod icon, uploaded into `ctx`
+    icons: IconTextures,
     events: Vec<UiEvent>,
     intents: Vec<PanelIntent>,
     actions: Vec<PanelAction>,
@@ -44,6 +46,7 @@ impl PanelRuntime {
             localizer,
             builder: RawInputBuilder::new(),
             controller: PanelController::new(),
+            icons: IconTextures::new(),
             events: Vec::new(),
             intents: Vec::new(),
             actions: Vec::new(),
@@ -60,10 +63,12 @@ impl PanelRuntime {
         let filtered = FrameInputData { events: &self.events, ..*input };
         let mut raw = RawInput::default();
         self.builder.build(&filtered, &mut raw);
+        self.icons.sync(&self.ctx, model);
         let controller = &self.controller;
+        let icons = &self.icons;
         let intents = &mut self.intents;
         let mut corner = None;
-        let mut output = self.ctx.run_ui(raw, |ui| corner = PanelLayout::show(ui, model, controller, intents));
+        let mut output = self.ctx.run_ui(raw, |ui| corner = PanelLayout::show(ui, model, controller, icons, intents));
         let ppp = output.pixels_per_point;
         let primitives = self.ctx.tessellate(std::mem::take(&mut output.shapes), ppp);
         let textures = self.ctx.tex_manager();
@@ -83,6 +88,7 @@ impl PanelRuntime {
     /// The device dropped every texture: the next pass sends the full font atlas again.
     pub fn textures_lost(&mut self) {
         self.ctx = Self::context(self.fonts, &self.localizer);
+        self.icons.clear();
     }
 
     /// The person picked another language: the next pass draws in it.

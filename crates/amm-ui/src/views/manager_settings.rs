@@ -1,26 +1,22 @@
 use egui::{Id, ScrollArea, Ui};
-use levi_i18n::text::{Args, Text, UserText};
-use levi_ui::draw::{TextStyle, TypeSize};
-use levi_ui::font::FontFace;
+use levi_i18n::text::{Text, UserText};
 use levi_ui::icon::Icon;
-use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
+use levi_ui::tokens::{SpacingToken, spacing};
 use levi_ui::widget::{
     ChipTone, Dropdown, DropdownOption, PageHeader, PageHeaderLead, ScrollBar, SectionCard, SettingControl, SettingRow,
 };
 
 use crate::model::{PanelAction, PanelIntent, PanelModel};
 use crate::runtime::PanelLocale;
-use crate::views::{KeybindRowView, PanelHint, TableCell};
+use crate::views::KeybindRowView;
 use crate::{AmmId, AmmMessage};
 
-/// The Manager settings page: the panel chord, the enabled flag of each mod, the mod limit the
-/// manager read from its own config at start, and the language every mod shows its text in.
+/// The Manager settings page: the panel chord and the language every mod shows its text in.
 pub struct ManagerSettingsView;
 
 impl ManagerSettingsView {
     /// Paper: Mod manager screen 08, the language dropdown's width.
     const LANGUAGE_WIDTH: f32 = 250.0;
-    const VALUE: TextStyle = TextStyle::new(TypeSize::Body, FontFace::Regular);
 
     pub fn show(ui: &mut Ui, model: &PanelModel, out: &mut Vec<PanelIntent>) {
         ui.spacing_mut().item_spacing.y = 0.0;
@@ -35,13 +31,7 @@ impl ManagerSettingsView {
             let gap = <spacing::L as SpacingToken>::VALUE;
             Self::panel(ui, model);
             ui.add_space(gap);
-            Self::mods(ui, model, out);
-            ui.add_space(gap);
-            Self::limits(ui, model);
-            ui.add_space(gap);
             Self::language(ui, model, out);
-            ui.add_space(<spacing::M as SpacingToken>::VALUE);
-            PanelHint::show(ui, &Text::message(AmmMessage::LimitsNote));
         });
     }
 
@@ -51,34 +41,6 @@ impl ManagerSettingsView {
             let control = SettingControl::Other(Box::new(|ui, _| chord.show(ui)));
             let row = SettingRow::new(Text::message(AmmMessage::PanelToggle), control);
             rows.row(row.help(Text::message(AmmMessage::PanelToggleHelp)));
-        });
-    }
-
-    fn mods(ui: &mut Ui, model: &PanelModel, out: &mut Vec<PanelIntent>) {
-        SectionCard::new(Text::message(AmmMessage::ModsTitle)).show(ui, |rows| {
-            for registered in model.mods() {
-                let descriptor = &registered.descriptor;
-                let args = Args::new()
-                    .user("id", UserText::from_model(descriptor.id.clone()))
-                    .user("version", UserText::from_model(descriptor.version.clone()));
-                let mut enabled = registered.enabled;
-                let name = Text::user(UserText::from_model(descriptor.display_name.clone()));
-                let row = SettingRow::new(name, SettingControl::Toggle(&mut enabled))
-                    .help(Text::format(AmmMessage::ModIdAndVersion, args));
-                if rows.row(row).changed() {
-                    out.push(PanelIntent::Action(PanelAction::SetEnabled(registered.index, enabled)));
-                }
-            }
-        });
-    }
-
-    fn limits(ui: &mut Ui, model: &PanelModel) {
-        let value = Text::user(UserText::from_model(model.config().budgets.max_mods.to_string()));
-        SectionCard::new(Text::message(AmmMessage::LimitsTitle)).show(ui, |rows| {
-            let text = <color::Text as ColorToken>::VALUE;
-            let control = SettingControl::Other(Box::new(|ui, _| TableCell::text(ui, &value, Self::VALUE, text)));
-            let row = SettingRow::new(Text::message(AmmMessage::LimitMods), control);
-            rows.row(row.help(Text::message(AmmMessage::LimitModsHelp)));
         });
     }
 

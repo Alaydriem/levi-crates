@@ -4,7 +4,7 @@ use levi_ui::state::{DisabledReason, InteractionState};
 use levi_ui::tokens::{ColorToken, OpacityToken, color, opacity};
 use levi_ui::widget::{Menu, MenuItem, MenuLeading, MenuTone, MenuTrailing, Submenu};
 
-use crate::support::{ClickProbe, PaintCapture, Sample, ShapeText};
+use crate::support::{ClickProbe, PaintCapture, Sample, ShapeText, WarnLog};
 
 struct ItemPaint;
 
@@ -145,6 +145,24 @@ fn leaf_click_closes_menu_and_disabled_item_does_not_click() {
     ClickProbe::click_at(&mut harness, rename);
     assert_eq!(harness.state().value.0, 1);
     assert!(!ClickProbe::texts(&harness).contains(&"Arrival".to_owned()), "the menu did not close");
+}
+
+#[test]
+fn an_item_clicked_outside_a_menu_makes_egui_warn_of_nothing() {
+    let log = WarnLog::install();
+    let mut harness = ClickProbe::harness_with(0_usize, |ui, clicks| {
+        let response = MenuItem::new(Sample::text("Rename scene…")).show(ui);
+        if response.clicked() {
+            *clicks += 1;
+        }
+        response
+    });
+    let item = harness.state().rect;
+
+    ClickProbe::click_at(&mut harness, item.center());
+
+    assert_eq!(harness.state().value, 1, "the item did not click");
+    assert!(log.lines().is_empty(), "egui warned: {:?}", log.lines());
 }
 
 #[test]

@@ -17,17 +17,6 @@ impl CapabilityText {
         }
     }
 
-    /// The short name in a chip on a mod row.
-    pub fn chip(cap: Capability) -> AmmMessage {
-        match cap {
-            Capability::Camera => AmmMessage::ChipCamera,
-            Capability::Input => AmmMessage::ChipInput,
-            Capability::Hud => AmmMessage::ChipHud,
-            Capability::Overlay => AmmMessage::ChipOverlay,
-            Capability::WorldDraw => AmmMessage::ChipWorldDraw,
-        }
-    }
-
     pub fn blurb(cap: Capability) -> AmmMessage {
         match cap {
             Capability::Camera => AmmMessage::CameraBlurb,

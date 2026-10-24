@@ -1,6 +1,6 @@
 use amm_core::structs::registry::ModIndex;
 use amm_ui::model::{PanelAction, PanelController, PanelIntent, PanelModel, PanelPage, PanelTab};
-use amm_ui::runtime::PanelLocale;
+use amm_ui::runtime::{IconTextures, PanelLocale};
 use amm_ui::views::PanelLayout;
 use egui::epaint::TextShape;
 use egui::{Color32, Context, Event, Key, Modifiers, PointerButton, Pos2, RawInput, Rect, Shape, vec2};
@@ -21,6 +21,7 @@ pub struct PanelHarness {
     pub actions: Vec<PanelAction>,
     pub screen: Rect,
     ctx: Context,
+    icons: IconTextures,
     time: f64,
     shapes: Vec<Shape>,
 }
@@ -42,7 +43,16 @@ impl PanelHarness {
         Theme::install(&ctx, FontSource::Embedded);
         UiLocale::set(&ctx, PanelLocale::localizer(code));
         let controller = PanelController::new();
-        let mut harness = Self { mods, controller, actions: Vec::new(), screen, ctx, time: 0.0, shapes: Vec::new() };
+        let mut harness = Self {
+            mods,
+            controller,
+            actions: Vec::new(),
+            screen,
+            ctx,
+            icons: IconTextures::new(),
+            time: 0.0,
+            shapes: Vec::new(),
+        };
         harness.run();
         harness
     }
@@ -76,9 +86,11 @@ impl PanelHarness {
         let raw = RawInput { screen_rect: Some(self.screen), time: Some(self.time), events, ..RawInput::default() };
         let mut intents = Vec::new();
         let (manager, controller) = (&self.mods.manager, &self.controller);
+        let model = PanelModel::new(manager, "1.4.1", 0);
+        self.icons.sync(&self.ctx, &model);
+        let icons = &self.icons;
         let mut output = self.ctx.run_ui(raw, |ui| {
-            let model = PanelModel::new(manager, "1.4.1", 0);
-            PanelLayout::show(ui, &model, controller, &mut intents);
+            PanelLayout::show(ui, &model, controller, icons, &mut intents);
         });
         // no texture leaves this test; the font atlas is not uploaded anywhere
         output.textures_delta.clear();
@@ -142,6 +154,13 @@ impl PanelHarness {
         found
     }
 
+    // the textured rects the last pass painted
+    pub fn image_rects(&self) -> Vec<Rect> {
+        let mut out = Vec::new();
+        Self::collect_images(&self.shapes, &mut out);
+        out
+    }
+
     // the filled rects of exactly this size and colour the last pass painted
     pub fn filled_rects(&self, size: f32, colour: Color32) -> Vec<Rect> {
         let mut out = Vec::new();
@@ -163,6 +182,16 @@ impl PanelHarness {
             match shape {
                 Shape::Text(text) => visit(text),
                 Shape::Vec(inner) => Self::visit_texts(inner, visit),
+                _ => {}
+            }
+        }
+    }
+
+    fn collect_images(shapes: &[Shape], out: &mut Vec<Rect>) {
+        for shape in shapes {
+            match shape {
+                Shape::Rect(rect) if rect.brush.is_some() => out.push(rect.rect),
+                Shape::Vec(inner) => Self::collect_images(inner, out),
                 _ => {}
             }
         }

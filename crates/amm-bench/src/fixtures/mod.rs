@@ -8,7 +8,9 @@ pub mod descriptors;
 pub mod egui_probe;
 pub mod eight_mods;
 pub mod fake_mesh;
+pub mod icon_png;
 pub mod latency_report;
+pub mod panel_rig;
 pub mod rect_handler;
 pub mod route_latency;
 
@@ -22,6 +24,8 @@ pub use descriptors::Descriptors;
 pub use egui_probe::EguiProbe;
 pub use eight_mods::EightMods;
 pub use fake_mesh::FakeMesh;
+pub use icon_png::IconPng;
 pub use latency_report::LatencyReport;
+pub use panel_rig::PanelRig;
 pub use rect_handler::RectHandler;
 pub use route_latency::{RouteLatency, RouteRun};

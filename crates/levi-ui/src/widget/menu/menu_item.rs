@@ -1,4 +1,4 @@
-use egui::{Color32, CursorIcon, Painter, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
+use egui::{ClosableTag, Color32, CursorIcon, Painter, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 use levi_i18n::text::Text;
 
 use super::{MenuLeading, MenuTone, MenuTrailing};
@@ -54,14 +54,15 @@ impl MenuItem {
         self
     }
 
-    /// Shows the row the menu's width. A click on an enabled leaf (not a submenu row) closes the menu.
+    /// Shows the row the menu's width. A click on an enabled leaf (not a submenu row) closes the menu it is in; a row
+    /// outside a menu (a list built from menu rows) closes nothing.
     pub fn show(self, ui: &mut Ui) -> Response {
         let enabled = self.disabled.is_none();
         let height = if enabled { <spacing::Row as SpacingToken>::VALUE } else { Self::REASON_HEIGHT };
         let sense = if enabled { Sense::click() } else { Sense::hover() };
         let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), height), sense);
         self.paint(ui.painter(), rect, InteractionState::of(&response, enabled));
-        if response.clicked() && !matches!(self.trailing, MenuTrailing::Submenu) {
+        if response.clicked() && !matches!(self.trailing, MenuTrailing::Submenu) && Self::in_closable(ui) {
             ui.close();
         }
         if enabled { response.on_hover_cursor(CursorIcon::PointingHand) } else { response }
@@ -142,6 +143,11 @@ impl MenuItem {
             MenuTrailing::Submenu => icon_slot(painter, Icon::Chevron, <color::TextDim as ColorToken>::VALUE),
             MenuTrailing::Check => icon_slot(painter, Icon::Check, <color::AccentHover as ColorToken>::VALUE),
         }
+    }
+
+    // egui warns when `close` finds no menu or popup above the row
+    fn in_closable(ui: &Ui) -> bool {
+        ui.stack().iter().any(|stack| stack.info.tags.get_downcast::<ClosableTag>(ClosableTag::NAME).is_some())
     }
 
     fn label_color(&self) -> Color32 {

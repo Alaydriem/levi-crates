@@ -1,4 +1,5 @@
 use amm_ui::model::{PanelAction, PanelPage};
+use amm_ui::views::PanelLayout;
 
 use crate::support::{FourMods, MINIMAP, PanelHarness};
 
@@ -39,4 +40,20 @@ fn a_code_with_spaces_selects_its_language() {
     let harness = settings(mods);
 
     assert!(harness.text_rect("en_XA").is_some(), "the field does not show en_XA: {:?}", harness.texts());
+}
+
+#[test]
+fn settings_page_has_only_panel_and_language_cards() {
+    let harness = settings(FourMods::new(MINIMAP));
+
+    assert_eq!(harness.count("PANEL"), 1, "{:?}", harness.texts());
+    assert_eq!(harness.count("LANGUAGE"), 1, "{:?}", harness.texts());
+    assert_eq!(harness.count("MODS"), 0, "{:?}", harness.texts());
+    assert_eq!(harness.count("LIMITS"), 0, "{:?}", harness.texts());
+    let note = "Limits are read when the game starts. Change them in the manager's config.hcl.";
+    assert_eq!(harness.count(note), 0, "{:?}", harness.texts());
+    let sidebar = PanelLayout::sidebar(PanelHarness::SCREEN);
+    let freecam = harness.text_rect("Freecam").unwrap_or_else(|| panic!("the Freecam row is painted"));
+    assert_eq!(harness.count("Freecam"), 1, "{:?}", harness.texts());
+    assert!(sidebar.contains_rect(freecam), "{freecam:?} is outside {sidebar:?}");
 }

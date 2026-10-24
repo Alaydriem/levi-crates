@@ -31,7 +31,7 @@ impl PageHeaderSheet {
                     .show(ui);
             });
             SheetGrid::section(ui, "PAGE · WITH AVATAR, CONFLICT CHIP AND TOGGLE", |ui| {
-                let lead = PageHeaderLead::Avatar(UserText::from_model("Freecam".to_owned()));
+                let lead = PageHeaderLead::Avatar(UserText::from_model("Freecam".to_owned()), None);
                 PageHeader::new(lead, Sample::text("Freecam"))
                     .meta(Self::meta(&["freecam", "v0.1.0", "by Alaydriem"]))
                     .trailing(|ui| {
@@ -52,7 +52,7 @@ impl PageHeaderSheet {
                     .show(ui);
                 ui.allocate_ui(vec2(Self::LONG_WIDTH, 0.0), |ui| {
                     let name = "World Edit Selection Tools and Brushes Extended";
-                    let lead = PageHeaderLead::Avatar(UserText::from_model(name.to_owned()));
+                    let lead = PageHeaderLead::Avatar(UserText::from_model(name.to_owned()), None);
                     PageHeader::new(lead, Sample::text(name))
                         .meta(Self::meta(&["worldedit-selection-tools", "v2.11.0", "by a very long author name"]))
                         .show(ui);

@@ -24,17 +24,12 @@ pub enum AmmMessage {
     Version,
     UnknownMod,
     PanelToggleLabel,
-    // capability names, their chip forms and their meanings
+    // capability names and their meanings
     CapabilityCamera,
     CapabilityInput,
     CapabilityHud,
     CapabilityOverlay,
     CapabilityWorldDraw,
-    ChipCamera,
-    ChipInput,
-    ChipHud,
-    ChipOverlay,
-    ChipWorldDraw,
     CameraBlurb,
     InputBlurb,
     HudBlurb,
@@ -87,7 +82,6 @@ pub enum AmmMessage {
     NoInteractions,
     Resolved,
     NeedsReview,
-    ModsTitle,
     ClashMods,
     ResolutionTitle,
     DenySecond,
@@ -106,14 +100,9 @@ pub enum AmmMessage {
     SuspensionDetail,
     // manager settings
     ManagerSettingsSubtitle,
-    LimitsNote,
     PanelTitle,
     PanelToggle,
     PanelToggleHelp,
-    LimitsTitle,
-    LimitMods,
-    LimitModsHelp,
-    ModIdAndVersion,
     LanguageTitle,
     Language,
     LanguageHelp,
@@ -155,11 +144,6 @@ impl Message for AmmMessage {
         Self::CapabilityHud,
         Self::CapabilityOverlay,
         Self::CapabilityWorldDraw,
-        Self::ChipCamera,
-        Self::ChipInput,
-        Self::ChipHud,
-        Self::ChipOverlay,
-        Self::ChipWorldDraw,
         Self::CameraBlurb,
         Self::InputBlurb,
         Self::HudBlurb,
@@ -208,7 +192,6 @@ impl Message for AmmMessage {
         Self::NoInteractions,
         Self::Resolved,
         Self::NeedsReview,
-        Self::ModsTitle,
         Self::ClashMods,
         Self::ResolutionTitle,
         Self::DenySecond,
@@ -226,14 +209,9 @@ impl Message for AmmMessage {
         Self::AKeybind,
         Self::SuspensionDetail,
         Self::ManagerSettingsSubtitle,
-        Self::LimitsNote,
         Self::PanelTitle,
         Self::PanelToggle,
         Self::PanelToggleHelp,
-        Self::LimitsTitle,
-        Self::LimitMods,
-        Self::LimitModsHelp,
-        Self::ModIdAndVersion,
         Self::LanguageTitle,
         Self::Language,
         Self::LanguageHelp,
@@ -272,12 +250,11 @@ impl Message for AmmMessage {
             Self::Version => "v{version}",
             Self::UnknownMod => "Unknown mod",
             Self::PanelToggleLabel => "Open/close panel",
-            Self::CapabilityCamera | Self::ChipCamera => "Camera",
-            Self::CapabilityInput | Self::ChipInput => "Input",
-            Self::CapabilityHud | Self::ChipHud => "HUD",
-            Self::CapabilityOverlay | Self::ChipOverlay => "Overlay",
+            Self::CapabilityCamera => "Camera",
+            Self::CapabilityInput => "Input",
+            Self::CapabilityHud => "HUD",
+            Self::CapabilityOverlay => "Overlay",
             Self::CapabilityWorldDraw => "World draw",
-            Self::ChipWorldDraw => "World",
             Self::CameraBlurb => "Moves or replaces the game camera",
             Self::InputBlurb => "Takes keyboard and mouse input",
             Self::HudBlurb => "Owns what shows on the play screen",
@@ -328,7 +305,6 @@ impl Message for AmmMessage {
             Self::NoInteractions => "No interactions between the installed mods.",
             Self::Resolved => "Resolved",
             Self::NeedsReview => "Needs review",
-            Self::ModsTitle => "MODS",
             Self::ClashMods => "Mods",
             Self::ResolutionTitle => "RESOLUTION",
             Self::DenySecond => "Deny the second request",
@@ -354,14 +330,9 @@ impl Message for AmmMessage {
                  and its {capability} keys are blocked."
             }
             Self::ManagerSettingsSubtitle => "Stored in the manager's config.hcl",
-            Self::LimitsNote => "Limits are read when the game starts. Change them in the manager's config.hcl.",
             Self::PanelTitle => "PANEL",
             Self::PanelToggle => "Panel toggle",
             Self::PanelToggleHelp => "Opens and closes this panel from anywhere in the game",
-            Self::LimitsTitle => "LIMITS",
-            Self::LimitMods => "Mods",
-            Self::LimitModsHelp => "Most mods that can register",
-            Self::ModIdAndVersion => "{id}, version {version}",
             Self::LanguageTitle => "LANGUAGE",
             Self::Language => "Language",
             Self::LanguageHelp => "Every mod shows its text in this language",
@@ -380,9 +351,6 @@ impl Message for AmmMessage {
 
     fn context(self) -> Option<&'static str> {
         match self {
-            Self::ChipCamera | Self::ChipInput | Self::ChipHud | Self::ChipOverlay | Self::ChipWorldDraw => {
-                Some("capability chip")
-            }
             Self::ClashMods => Some("clash card"),
             _ => None,
         }
@@ -407,9 +375,6 @@ impl Message for AmmMessage {
             Self::LeviLaminaVersion => Some("{version} is the version of the LeviLamina loader"),
             Self::PanelHint => Some("Follows the key chord that opens the panel, in the sidebar footer"),
             Self::Version => Some("A mod's version, as in v1.2.0"),
-            Self::ChipCamera | Self::ChipInput | Self::ChipHud | Self::ChipOverlay | Self::ChipWorldDraw => {
-                Some("A short capability name in a small chip on a mod row")
-            }
             Self::CapabilityCamera
             | Self::CapabilityInput
             | Self::CapabilityHud
@@ -425,7 +390,6 @@ impl Message for AmmMessage {
             Self::BoundTwice => Some("A clash title; {chord} is a key chord such as Ctrl+B"),
             Self::KeyClashDetail => Some("{first_action} and {second_action} are keybind names; the others are mods"),
             Self::AKeybind => Some("Stands in for a keybind name that is not known"),
-            Self::ModIdAndVersion => Some("A mod's id and version under its name in Manager settings"),
             Self::HeldBy => Some("A toast title; {holder} is the mod that holds the capability"),
             Self::KeyBlocked => Some("{action} is the name of the keybind that did not run"),
             _ => None,

@@ -1,36 +1,22 @@
-use std::collections::{BTreeSet, HashSet};
+use std::path::Path;
 
 use amm_ui::message::AmmMessage;
 use amm_ui::text::AmmPacks;
 use levi_i18n::message::Message;
 use levi_i18n::service::{LocaleSetting, LocalizationService};
+use levi_i18n_tool::catalog::CatalogCheck;
 
 #[test]
-fn every_message_has_text_and_a_unique_key() {
-    let mut keys = HashSet::new();
-    for message in AmmMessage::ALL {
-        assert!(!message.msgid().trim().is_empty(), "{message:?}");
-        assert!(keys.insert((message.context(), message.msgid())), "{message:?} repeats a key");
-    }
+fn message_catalog() {
+    let problems = CatalogCheck::problems::<AmmMessage>();
+    assert!(problems.is_empty(), "{}", problems.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"));
 }
 
 #[test]
-fn index_is_the_position_in_all() {
-    for (position, message) in AmmMessage::ALL.iter().enumerate() {
-        assert_eq!(message.index(), position, "{message:?}");
-    }
-}
-
-#[test]
-fn placeholders_match_between_singular_and_plural() {
-    let placeholders = |text: &'static str| -> BTreeSet<&'static str> {
-        text.split('{').skip(1).filter_map(|part| part.split_once('}').map(|(name, _)| name)).collect()
-    };
-    for message in AmmMessage::ALL {
-        if let Some(plural) = message.plural() {
-            assert_eq!(placeholders(message.msgid()), placeholders(plural), "{message:?}");
-        }
-    }
+fn pot_up_to_date() {
+    let i18n = Path::new(env!("CARGO_MANIFEST_DIR")).join("i18n");
+    let current = CatalogCheck::pot_is_current::<AmmMessage>(&i18n).unwrap_or_else(|error| panic!("{error}"));
+    assert!(current, "amm-ui.pot is out of date: run `mise run i18n:extract`");
 }
 
 #[test]

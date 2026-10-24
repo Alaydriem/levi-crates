@@ -28,7 +28,7 @@ impl HeaderProbe {
             .build_ui_state(
                 move |ui, log: &mut HeaderLog| {
                     let mut trailing = Rect::NOTHING;
-                    let lead = PageHeaderLead::Avatar(UserText::from_model(title.to_owned()));
+                    let lead = PageHeaderLead::Avatar(UserText::from_model(title.to_owned()), None);
                     log.header = PageHeader::new(lead, Sample::text(title))
                         .meta(meta.iter().map(|item| Sample::text(item)).collect())
                         .trailing(|ui| trailing = IconButton::new(Icon::Close).show(ui).rect)
@@ -112,7 +112,7 @@ fn meta_items_are_joined_by_drawn_dots() {
 #[test]
 fn trailing_does_not_pull_the_next_widget_up() {
     let log = FlowProbe::run(|ui| {
-        let lead = PageHeaderLead::Avatar(UserText::from_model("Freecam".to_owned()));
+        let lead = PageHeaderLead::Avatar(UserText::from_model("Freecam".to_owned()), None);
         PageHeader::new(lead, Sample::text("Freecam"))
             .trailing(|ui| {
                 IconButton::new(Icon::Close).show(ui);
@@ -125,7 +125,7 @@ fn trailing_does_not_pull_the_next_widget_up() {
 #[test]
 fn height_is_the_height_it_takes() {
     let harness = HeaderProbe::harness(640.0, "Freecam", &["freecam", "v0.1.0"]);
-    let lead = PageHeaderLead::Avatar(UserText::from_model("Freecam".to_owned()));
+    let lead = PageHeaderLead::Avatar(UserText::from_model("Freecam".to_owned()), None);
     let header = PageHeader::new(lead, Sample::text("Freecam")).meta(vec![Sample::text("freecam")]);
     let panel = PageHeader::new(PageHeaderLead::Tile(Icon::Apps, ChipTone::Accent), Sample::text("Mod Manager"))
         .eyebrow(Sample::text("ALAYDRIEM"));

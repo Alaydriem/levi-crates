@@ -5,7 +5,7 @@
 
 mod zero_alloc_support;
 
-use amm_bench::fixtures::{BenchHost, EguiProbe};
+use amm_bench::fixtures::{BenchHost, EguiProbe, PanelRig};
 use zero_alloc_support::ThreadAlloc;
 
 #[global_allocator]
@@ -116,5 +116,48 @@ fn a_world_draw_client_without_a_frame_callback_allocates_nothing_in_a_steady_fr
         (change.allocations, change.reallocations, change.bytes_allocated),
         (0, 0, 0),
         "{MEASURED_FRAMES} steady frames without a frame callback allocated"
+    );
+}
+
+const PANEL_FRAMES: u64 = 200;
+// Allocations a steady frame adds for four mod icons. A shape on another texture id starts its own egui mesh with
+// its own vectors; the icon brush is shared, not built per frame. Measured: 274 with four icons, 264 without.
+const ICON_FRAME_ALLOCATIONS: usize = 10;
+
+// The allocations of each of `PANEL_FRAMES` passes of `rig`, after the warm-up.
+struct PanelCounts;
+
+impl PanelCounts {
+    fn per_frame(rig: &mut PanelRig) -> Vec<usize> {
+        rig.run(WARMUP_FRAMES);
+        let mut counts = Vec::with_capacity(PANEL_FRAMES as usize);
+        for _ in 0..PANEL_FRAMES {
+            let start = ThreadAlloc::current();
+            rig.run(1);
+            counts.push(ThreadAlloc::since(start).allocations);
+        }
+        counts
+    }
+}
+
+#[test]
+fn panel_frames_with_steady_icons_allocate_a_constant_amount_per_frame() {
+    let mut without = PanelRig::new();
+    let mut with = PanelRig::new();
+    with.set_icons();
+
+    let a = PanelCounts::per_frame(&mut without);
+    let b = PanelCounts::per_frame(&mut with);
+
+    eprintln!("panel allocations per frame: without icons {}, with icons {}", a[0], b[0]);
+    // The icon textures are synced once; a steady frame draws them with the same work every pass, so the count
+    // per frame does not move and does not grow with the frames run.
+    assert!(a.iter().all(|count| *count == a[0]), "panel frames without icons vary: {a:?}");
+    assert!(b.iter().all(|count| *count == b[0]), "panel frames with icons vary: {b:?}");
+    assert!(
+        b[0] <= a[0] + ICON_FRAME_ALLOCATIONS,
+        "four icons cost more allocations per frame than allowed: {} with icons, {} without, {ICON_FRAME_ALLOCATIONS} allowed",
+        b[0],
+        a[0]
     );
 }

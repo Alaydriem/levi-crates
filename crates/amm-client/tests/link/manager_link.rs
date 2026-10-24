@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use amm_abi::types::{AmmEvent, AmmLogLevel, AmmStatus};
 use amm_client::link::ManagerLink;
 use amm_core::errors::LinkError;
+use amm_core::services::icon::IconDecoder;
 use amm_core::structs::descriptor::Capability;
 use amm_core::structs::event::{KeybindPhase, ModEvent};
 use amm_core::structs::registry::ModIndex;
@@ -205,6 +206,16 @@ fn link_reads_the_locale() {
 }
 
 #[test]
+fn the_link_gives_back_the_localizer_it_was_set() {
+    let link = FakeTable::link(IdleHandler);
+    let set = Arc::new(levi_i18n::localize::Localizer::english());
+
+    link.set_localizer(Arc::clone(&set));
+
+    assert!(Arc::ptr_eq(&link.localizer(), &set));
+}
+
+#[test]
 fn a_link_without_a_frame_registers_with_no_callbacks_and_unregisters_on_drop() {
     let link = FakeTable::link_without_frame();
     let handle = FakeTable::with(|state| state.handle);
@@ -281,4 +292,80 @@ fn a_link_made_with_a_frame_handler_frees_its_frame_state_on_drop() {
     drop(link);
 
     assert!(dropped.load(Ordering::SeqCst));
+}
+
+#[test]
+fn set_icon_passes_the_bytes() {
+    let link = FakeTable::link_without_frame();
+
+    assert_eq!(link.set_icon(&[1, 2, 3, 4, 5]), Ok(()));
+
+    assert_eq!(FakeTable::with(|state| state.icon_calls.clone()), vec![5]);
+}
+
+#[test]
+fn set_icon_maps_status() {
+    let link = FakeTable::link_without_frame();
+    FakeTable::with(|state| state.icon_status = AmmStatus::InvalidArgument);
+
+    assert_eq!(link.set_icon(&[1, 2, 3]), Err(LinkError::Status(AmmStatus::InvalidArgument as i32)));
+}
+
+#[test]
+fn old_manager_gives_unsupported() {
+    let mut api = FakeTable::api();
+    api.set_icon = None;
+    let link = FakeTable::link_without_frame_on(api);
+
+    assert_eq!(link.set_icon(&[1, 2, 3]), Err(LinkError::Status(AmmStatus::Unsupported as i32)));
+    assert!(FakeTable::with(|state| state.icon_calls.is_empty()));
+}
+
+#[test]
+fn set_icon_file_reads_and_sends() {
+    let link = FakeTable::link_without_frame();
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("icon.png");
+    std::fs::write(&path, vec![7u8; 321]).expect("write icon");
+
+    assert_eq!(link.set_icon_file(&path), Ok(()));
+
+    assert_eq!(FakeTable::with(|state| state.icon_calls.clone()), vec![321]);
+}
+
+#[test]
+fn oversized_file_is_refused_without_a_call() {
+    let link = FakeTable::link_without_frame();
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("big.png");
+    std::fs::write(&path, vec![0u8; IconDecoder::MAX_BYTES + 1]).expect("write icon");
+
+    let result = link.set_icon_file(&path);
+
+    assert!(matches!(result, Err(LinkError::IconFile { .. })), "got {result:?}");
+    assert!(FakeTable::with(|state| state.icon_calls.is_empty()));
+}
+
+#[test]
+fn empty_icon_file_is_refused_without_a_call() {
+    let link = FakeTable::link_without_frame();
+    let dir = tempfile::tempdir().expect("temp dir");
+    let path = dir.path().join("empty.png");
+    std::fs::write(&path, b"").expect("write icon");
+
+    let result = link.set_icon_file(&path);
+
+    assert!(matches!(result, Err(LinkError::IconFile { .. })), "got {result:?}");
+    assert!(FakeTable::with(|state| state.icon_calls.is_empty()));
+}
+
+#[test]
+fn missing_file_is_icon_file_error() {
+    let link = FakeTable::link_without_frame();
+    let dir = tempfile::tempdir().expect("temp dir");
+
+    let result = link.set_icon_file(&dir.path().join("absent.png"));
+
+    assert!(matches!(result, Err(LinkError::IconFile { .. })), "got {result:?}");
+    assert!(FakeTable::with(|state| state.icon_calls.is_empty()));
 }

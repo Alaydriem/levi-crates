@@ -21,6 +21,12 @@ impl GlyphsPage {
     /// Paper: each glyph artboard's preview panel.
     const CELL: [f32; 2] = [248.0, 130.0];
     const PER_ROW: usize = 4;
+    /// Paper: `Glyph / checkpoint tick`, the box of each tick sample.
+    const TICK_BOX: egui::Vec2 = vec2(20.0, 20.0);
+    /// Paper: `Glyph / scene camera frustum`, the box of each frustum sample.
+    const FRUSTUM_BOX: egui::Vec2 = vec2(60.0, 56.0);
+    /// Paper: `Glyph / player name tag`, how far the first tag sits above the cell centre.
+    const TAG_RISE: egui::Vec2 = vec2(0.0, 14.0);
     const TITLES: [&'static str; 8] = [
         "PLAYHEAD",
         "BOOKMARK FLAG",
@@ -88,13 +94,13 @@ impl GlyphsPage {
                     <color::Line as ColorToken>::VALUE,
                 );
                 for slot in slots(4) {
-                    let rect = Rect::from_center_size(pos2(slot.center().x, line - 10.0), vec2(20.0, 20.0));
+                    let rect = Rect::from_center_size(pos2(slot.center().x, line - 10.0), Self::TICK_BOX);
                     CheckpointTick.paint(painter, rect, <studio::Checkpoint as ColorToken>::VALUE);
                 }
             }
             3 => {
                 for (slot, (colour, filled)) in slots(3).zip([(amber, false), (white, true), (red, true)]) {
-                    let rect = Rect::from_center_size(slot.center(), vec2(60.0, 56.0));
+                    let rect = Rect::from_center_size(slot.center(), Self::FRUSTUM_BOX);
                     SceneCameraFrustum { filled }.paint(painter, rect, colour);
                 }
             }
@@ -109,7 +115,7 @@ impl GlyphsPage {
                 }
             }
             5 => {
-                let top = Rect::from_center_size(cell.center() - vec2(0.0, 14.0), vec2(cell.width(), 24.0));
+                let top = Rect::from_center_size(cell.center() - Self::TAG_RISE, vec2(cell.width(), 24.0));
                 NameTag { name: Self::words("nether_nomad") }.paint(painter, top);
                 for (slot, name) in slots(2).zip(["PixelPilgrim", "Kestrel"]) {
                     let rect =

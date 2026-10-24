@@ -4,6 +4,7 @@ use amm_core::config::ManagerConfig;
 use amm_core::errors::ManagerError;
 use amm_core::services::manager::ManagerService;
 use amm_core::structs::descriptor::Capability;
+use amm_core::structs::icon::ModIcon;
 use amm_core::structs::input::{InputEvent, Modifiers};
 use amm_core::structs::menu::MenuScreens;
 use amm_core::structs::registry::ModIndex;
@@ -53,9 +54,23 @@ impl Scene {
         manager.set_setting(minimap, "map.zoom", "2.5", 0).map_err(fail)?;
         manager.edit_draft(minimap, "map.radius", hcl::Value::from(12), 0).map_err(fail)?;
         manager.edit_draft(minimap, "map.shape", hcl::Value::from("circle"), 0).map_err(fail)?;
+        manager.set_icon(freecam, Some(Self::icon())).map_err(fail)?;
         manager.set_panel_open(true);
         let freecam_cycle_mode = Self::action(&manager, freecam, "cycle_mode")?;
         Ok(Self { manager, minimap, freecam, freecam_cycle_mode })
+    }
+
+    // a 64 by 64 diagonal gradient with opaque corners
+    fn icon() -> ModIcon {
+        let side: u16 = 64;
+        let mut rgba = Vec::with_capacity(usize::from(side) * usize::from(side) * 4);
+        for y in 0..side {
+            for x in 0..side {
+                let (x, y) = (u8::try_from(x * 4).unwrap_or(u8::MAX), u8::try_from(y * 4).unwrap_or(u8::MAX));
+                rgba.extend_from_slice(&[x, 120, y, 255]);
+            }
+        }
+        ModIcon { width: side, height: side, rgba }
     }
 
     fn register(manager: &mut ManagerService, hcl: &str, id: &str) -> Result<ModIndex, String> {

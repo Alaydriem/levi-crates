@@ -89,31 +89,6 @@ msgstr ""
 msgid "World draw"
 msgstr ""
 
-#. A short capability name in a small chip on a mod row
-msgctxt "capability chip"
-msgid "Camera"
-msgstr ""
-
-#. A short capability name in a small chip on a mod row
-msgctxt "capability chip"
-msgid "Input"
-msgstr ""
-
-#. A short capability name in a small chip on a mod row
-msgctxt "capability chip"
-msgid "HUD"
-msgstr ""
-
-#. A short capability name in a small chip on a mod row
-msgctxt "capability chip"
-msgid "Overlay"
-msgstr ""
-
-#. A short capability name in a small chip on a mod row
-msgctxt "capability chip"
-msgid "World"
-msgstr ""
-
 msgid "Moves or replaces the game camera"
 msgstr ""
 
@@ -279,9 +254,6 @@ msgstr ""
 msgid "Needs review"
 msgstr ""
 
-msgid "MODS"
-msgstr ""
-
 #. Before the chips of the two mods in a clash card on the Conflicts page
 msgctxt "clash card"
 msgid "Mods"
@@ -346,9 +318,6 @@ msgstr ""
 msgid "Stored in the manager's config.hcl"
 msgstr ""
 
-msgid "Limits are read when the game starts. Change them in the manager's config.hcl."
-msgstr ""
-
 msgid "PANEL"
 msgstr ""
 
@@ -356,20 +325,6 @@ msgid "Panel toggle"
 msgstr ""
 
 msgid "Opens and closes this panel from anywhere in the game"
-msgstr ""
-
-msgid "LIMITS"
-msgstr ""
-
-msgid "Mods"
-msgstr ""
-
-msgid "Most mods that can register"
-msgstr ""
-
-#. A mod's id and version under its name in Manager settings
-#, python-brace-format
-msgid "{id}, version {version}"
 msgstr ""
 
 msgid "LANGUAGE"

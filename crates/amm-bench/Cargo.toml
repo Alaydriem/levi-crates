@@ -20,6 +20,11 @@ path = "benches/capture_buffer.rs"
 harness = false
 
 [[bench]]
+name = "icon"
+path = "benches/icon.rs"
+harness = false
+
+[[bench]]
 name = "manager"
 path = "benches/manager.rs"
 harness = false
@@ -37,6 +42,9 @@ amm-abi.workspace = true
 amm-core = { workspace = true, features = ["egui"] }
 amm-ffi.workspace = true
 amm-client.workspace = true
+amm-ui.workspace = true
+levi-ui.workspace = true
+png.workspace = true
 egui.workspace = true
 tempfile.workspace = true
 
