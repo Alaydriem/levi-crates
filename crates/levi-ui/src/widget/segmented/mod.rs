@@ -15,12 +15,14 @@ use crate::tokens::rule::FocusRing;
 use crate::tokens::{ColorToken, SpacingToken, color, spacing};
 
 /// Paper: Widgets, `Widget / Segmented`. Segments in a `--color-bg-field` track; the selected one
-/// has the soft fill and slides when the choice changes.
+/// has the soft fill and slides when the choice changes. With `columns` (Paper row `Grid, two rows`) the
+/// segments are separate buttons in a grid, and the selected one has the accent fill.
 pub struct Segmented<'a> {
     id: Id,
     selected: &'a mut usize,
     segments: Vec<Segment>,
     disabled: Option<DisabledReason>,
+    columns: Option<usize>,
 }
 
 impl<'a> Segmented<'a> {
@@ -28,9 +30,19 @@ impl<'a> Segmented<'a> {
     const INSET: f32 = 2.0;
     /// Paper: Segmented sheet, the divider height.
     const DIVIDER_HEIGHT: f32 = 14.0;
+    /// Paper: Segmented sheet, the gap between the buttons of the grid.
+    const GRID_GAP: f32 = 5.0;
+    const GRID_LABEL: TextStyle = TextStyle::new(TypeSize::Note, FontFace::Regular);
+    const GRID_LABEL_SELECTED: TextStyle = TextStyle::new(TypeSize::Note, FontFace::Semibold);
 
     pub fn new(id: Id, selected: &'a mut usize, segments: Vec<Segment>) -> Self {
-        Self { id, selected, segments, disabled: None }
+        Self { id, selected, segments, disabled: None, columns: None }
+    }
+
+    /// Lays the segments out as a grid of `columns` buttons per row, `--spacing-row` high and 5 apart.
+    pub fn columns(mut self, columns: usize) -> Self {
+        self.columns = Some(columns.max(1));
+        self
     }
 
     pub fn enabled(mut self, enabled: bool, reason: DisabledReason) -> Self {
@@ -42,7 +54,7 @@ impl<'a> Segmented<'a> {
     pub fn show(self, ui: &mut Ui, width: f32) -> Response {
         let enabled = self.disabled.is_none();
         let width = if self.all_icons() { self.icon_width() } else { width };
-        let (rect, mut response) = ui.allocate_exact_size(vec2(width, Self::height()), Sense::hover());
+        let (rect, mut response) = ui.allocate_exact_size(vec2(width, self.height()), Sense::hover());
         let cells = self.cells(rect);
         let mut states = Vec::with_capacity(cells.len());
         let mut focused = None;
@@ -103,6 +115,10 @@ impl<'a> Segmented<'a> {
     }
 
     fn paint_with(&self, painter: &Painter, rect: Rect, states: &[InteractionState], slide_left: f32) {
+        if self.columns.is_some() {
+            self.paint_grid(painter, rect, states);
+            return;
+        }
         let disabled = states.contains(&InteractionState::Disabled);
         let painter = if disabled { InteractionState::Disabled.painter(painter) } else { painter.clone() };
         let cells = self.cells(rect);
@@ -128,6 +144,32 @@ impl<'a> Segmented<'a> {
         for (index, (cell, segment)) in cells.iter().zip(&self.segments).enumerate() {
             let state = states.get(index).copied().unwrap_or(InteractionState::Rest);
             self.paint_segment(&painter, *cell, segment, index == selected, state);
+        }
+    }
+
+    // the grid look: one button per segment, the selected one in the accent fill
+    fn paint_grid(&self, painter: &Painter, rect: Rect, states: &[InteractionState]) {
+        let disabled = states.contains(&InteractionState::Disabled);
+        let painter = if disabled { InteractionState::Disabled.painter(painter) } else { painter.clone() };
+        for (index, (cell, segment)) in self.cells(rect).iter().zip(&self.segments).enumerate() {
+            let state = states.get(index).copied().unwrap_or(InteractionState::Rest);
+            let selected = index == *self.selected;
+            if state == InteractionState::Focused {
+                FocusRing::paint(&painter, *cell, Corner::Control.radius(*cell));
+            }
+            let style = if selected { StateStyle::Accent } else { StateStyle::Field };
+            Draw::fill(&painter, *cell, Corner::Control, style.fill(state.inner()));
+            let colour =
+                if selected { <color::OnAccent as ColorToken>::VALUE } else { <color::Text as ColorToken>::VALUE };
+            match segment {
+                Segment::Icon(icon) => icon.paint(&painter, *cell, IconSize::Regular, colour),
+                Segment::Text(text) => {
+                    let face = if selected { Self::GRID_LABEL_SELECTED } else { Self::GRID_LABEL };
+                    let label = UiText::resolve(painter.ctx(), text);
+                    let galley = Draw::galley(&painter, &label, face, colour, TextFit::Truncate(cell.width()));
+                    painter.galley(cell.center() - galley.size() / 2.0, galley, colour);
+                }
+            }
         }
     }
 
@@ -178,6 +220,9 @@ impl<'a> Segmented<'a> {
     // the segment rects inside the inset: icon segments are `--spacing-button` wide, text segments
     // share the width equally
     fn cells(&self, rect: Rect) -> Vec<Rect> {
+        if let Some(columns) = self.columns {
+            return self.grid_cells(rect, columns);
+        }
         let inner = rect.shrink(Self::INSET);
         let count = self.segments.len().max(1);
         let width =
@@ -189,11 +234,30 @@ impl<'a> Segmented<'a> {
             .collect()
     }
 
+    // the grid: `columns` equal buttons per row, as many rows as the segments need
+    fn grid_cells(&self, rect: Rect, columns: usize) -> Vec<Rect> {
+        let row = <spacing::Row as SpacingToken>::VALUE;
+        let width = (rect.width() - Self::GRID_GAP * (columns as f32 - 1.0)) / columns as f32;
+        (0..self.segments.len())
+            .map(|index| {
+                let (line, column) = (index / columns, index % columns);
+                let at = pos2(
+                    rect.left() + (width + Self::GRID_GAP) * column as f32,
+                    rect.top() + (row + Self::GRID_GAP) * line as f32,
+                );
+                Rect::from_min_size(at, vec2(width, row))
+            })
+            .collect()
+    }
+
     fn all_icons(&self) -> bool {
         !self.segments.is_empty() && self.segments.iter().all(|segment| matches!(segment, Segment::Icon(_)))
     }
 
-    fn height() -> f32 {
-        <spacing::Field as SpacingToken>::VALUE
+    fn height(&self) -> f32 {
+        let Some(columns) = self.columns else { return <spacing::Field as SpacingToken>::VALUE };
+        let rows = self.segments.len().div_ceil(columns).max(1) as f32;
+        let row = <spacing::Row as SpacingToken>::VALUE;
+        rows * row + (rows - 1.0) * Self::GRID_GAP
     }
 }

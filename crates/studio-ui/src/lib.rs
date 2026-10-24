@@ -8,6 +8,5 @@ pub mod id;
 pub mod message;
 pub mod rule;
 pub mod text;
-pub mod theme;
 pub mod tokens;
 pub mod widgets;

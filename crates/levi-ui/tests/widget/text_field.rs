@@ -1,6 +1,6 @@
 use egui::{Event, Key, Rect, Shape, pos2};
 use levi_ui::state::InteractionState;
-use levi_ui::tokens::{ColorToken, color};
+use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
 use levi_ui::widget::{FieldLook, TextField, TextFieldKind};
 
 use crate::support::{ClickProbe, PaintCapture, Sample, ShapeText};
@@ -58,6 +58,45 @@ fn search_has_icon_and_clear_only_with_text() {
     let texts = ShapeText::all(&empty);
     assert!(!texts.contains(&"\u{E8BB}".to_owned()));
     assert!(texts.contains(&"Search replays".to_owned()), "no placeholder");
+}
+
+#[test]
+fn leading_swatch_leads_the_text_and_the_field_is_button_high() {
+    let lime = egui::Color32::from_rgb(0xB5, 0xE8, 0x53);
+    let rect = Rect::from_min_max(pos2(20.0, 20.0), pos2(300.0, 20.0 + <spacing::Button as SpacingToken>::VALUE));
+    let mut value = "Arrival".to_owned();
+    let field = TextField::new(egui::Id::NULL, &mut value, TextFieldKind::Plain, Sample::text("Scene name"))
+        .leading_swatch(lime);
+    let shapes = PaintCapture::shapes(|painter| {
+        field.paint(painter, rect, InteractionState::Rest, &FieldLook::default());
+    });
+    let rects = PaintCapture::rects(&shapes);
+    let Some(swatch) = rects.iter().find(|r| r.fill == lime) else { panic!("no swatch") };
+    assert_eq!(swatch.rect.size(), egui::vec2(12.0, 12.0));
+    assert_eq!(swatch.rect.center().y, rect.center().y);
+    assert_eq!(swatch.rect.left(), rect.left() + <spacing::M as SpacingToken>::VALUE);
+    let Some((_, text)) = PaintCapture::text_rects(&shapes).into_iter().find(|(text, _)| text == "Arrival") else {
+        panic!("no name")
+    };
+    assert!(text.left() > swatch.rect.right(), "the name {text:?} starts inside the swatch {:?}", swatch.rect);
+    // the box has the stronger line the name field uses
+    assert!(rects.iter().any(|r| r.rect == rect && r.stroke.color == color::LineStrong::VALUE.gamma_multiply(0.7)));
+}
+
+#[test]
+fn field_without_a_swatch_keeps_the_field_height() {
+    let mut harness = ClickProbe::harness_with("Arrival".to_owned(), |ui, value| {
+        TextField::new(egui::Id::unique(1), value, TextFieldKind::Plain, Sample::text("Scene name")).show(ui, 280.0)
+    });
+    harness.run();
+    assert_eq!(harness.state().rect.height(), <spacing::Field as SpacingToken>::VALUE);
+    let mut harness = ClickProbe::harness_with("Arrival".to_owned(), |ui, value| {
+        TextField::new(egui::Id::unique(1), value, TextFieldKind::Plain, Sample::text("Scene name"))
+            .leading_swatch(egui::Color32::RED)
+            .show(ui, 280.0)
+    });
+    harness.run();
+    assert_eq!(harness.state().rect.height(), <spacing::Button as SpacingToken>::VALUE);
 }
 
 #[test]

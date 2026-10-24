@@ -1,21 +1,28 @@
 use egui::{Color32, Rect, Shape, pos2, vec2};
+use levi_i18n::text::{Text, UserText};
+use levi_ui::icon::Icon;
 use levi_ui::state::InteractionState;
 use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
-use studio_ui::theme::Icon;
+use studio_ui::message::StudioUiMessage;
 use studio_ui::widgets::{RailIcon, RailTile, RailTone};
 
 use super::headless::Headless;
-use crate::support::PaintCapture;
+use crate::support::{PaintCapture, UiProbe};
 
 // the tile's rect in the paint tests
 fn tile() -> Rect {
     Rect::from_min_size(pos2(20.0, 20.0), vec2(RailTile::SIDE, RailTile::SIDE))
 }
 
+// a label the caller got from the model
+fn label(words: &str) -> Text {
+    Text::user(UserText::from_model(words.to_owned()))
+}
+
 // what a Pause tile paints in `state`
 fn paint(state: InteractionState) -> Vec<Shape> {
     PaintCapture::shapes(|painter| {
-        RailTile::paint(painter, tile(), RailIcon::Glyph(Icon::PAUSE), "Pause", RailTone::Normal, state)
+        RailTile::paint(painter, tile(), RailIcon::Glyph(Icon::Pause), &label("Pause"), RailTone::Normal, state)
     })
 }
 
@@ -34,7 +41,8 @@ fn fill(shapes: &[Shape]) -> Color32 {
 fn rail_tile_side_is_the_large_tile_token() {
     let mut headless = Headless::new();
 
-    let rect = headless.rect(|ui| RailTile::show(ui, RailIcon::Glyph(Icon::PAUSE), "Pause", RailTone::Normal, true));
+    let rect = headless
+        .rect(|ui| RailTile::show(ui, RailIcon::Glyph(Icon::Pause), &label("Pause"), RailTone::Normal, true));
 
     assert_eq!(RailTile::SIDE, <spacing::TileLarge as SpacingToken>::VALUE);
     assert_eq!(rect.size(), egui::vec2(RailTile::SIDE, RailTile::SIDE));
@@ -57,10 +65,11 @@ fn rail_tile_states_follow_the_state_model() {
 #[test]
 fn enabled_rail_tile_reports_click() {
     let mut headless = Headless::new();
-    let rect = headless.rect(|ui| RailTile::show(ui, RailIcon::RecordDot, "Record", RailTone::Normal, true));
+    let record = label("Record");
+    let rect = headless.rect(|ui| RailTile::show(ui, RailIcon::RecordDot, &record, RailTone::Normal, true));
 
     let clicked = headless.click(Headless::centre(rect), |ui| {
-        RailTile::show(ui, RailIcon::RecordDot, "Record", RailTone::Normal, true).clicked()
+        RailTile::show(ui, RailIcon::RecordDot, &record, RailTone::Normal, true).clicked()
     });
 
     assert!(clicked);
@@ -69,11 +78,27 @@ fn enabled_rail_tile_reports_click() {
 #[test]
 fn disabled_rail_tile_ignores_click() {
     let mut headless = Headless::new();
-    let rect = headless.rect(|ui| RailTile::show(ui, RailIcon::Glyph(Icon::PAUSE), "Pause", RailTone::Normal, false));
+    let pause = label("Pause");
+    let rect = headless.rect(|ui| RailTile::show(ui, RailIcon::Glyph(Icon::Pause), &pause, RailTone::Normal, false));
 
     let clicked = headless.click(Headless::centre(rect), |ui| {
-        RailTile::show(ui, RailIcon::Glyph(Icon::PAUSE), "Pause", RailTone::Normal, false).clicked()
+        RailTile::show(ui, RailIcon::Glyph(Icon::Pause), &pause, RailTone::Normal, false).clicked()
     });
 
     assert!(!clicked);
+}
+
+// the label is `Text`: a message is resolved in the locale of the context, not shown as its English msgid
+#[test]
+fn rail_tile_label_follows_the_context_locale() {
+    let mut probe = UiProbe::pseudo(400.0, 300.0);
+    let pause = Text::message(StudioUiMessage::Pause);
+
+    let shapes = probe.shapes(|ui| {
+        RailTile::show(ui, RailIcon::Glyph(Icon::Pause), &pause, RailTone::Normal, true);
+    });
+
+    let words = UiProbe::words(&shapes);
+    assert!(words.iter().any(|word| word.starts_with('[') && word != "Pause"), "{words:?}");
+    assert!(!words.iter().any(|word| word == "Pause"), "{words:?}");
 }

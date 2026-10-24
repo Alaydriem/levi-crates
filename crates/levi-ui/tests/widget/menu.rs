@@ -87,6 +87,38 @@ fn swatch_rows_paint_a_swatch_dot() {
 }
 
 #[test]
+fn radio_draws_a_ring_and_a_dot_only_when_selected() {
+    let circles = |selected: bool| {
+        let item = MenuItem::new(Sample::text("Ready")).leading(MenuLeading::Radio(selected));
+        let shapes = ItemPaint::shapes(&item, InteractionState::Rest);
+        shapes
+            .iter()
+            .filter_map(|s| if let Shape::Circle(c) = s { Some((c.radius, c.fill, c.stroke)) } else { None })
+            .collect::<Vec<_>>()
+    };
+    let off = circles(false);
+    assert_eq!(off.len(), 1, "{off:?}");
+    assert_eq!(off[0].0, 6.0 - 0.75);
+    assert_eq!(off[0].2.color, color::TextDim::VALUE);
+    assert_eq!(off[0].2.width, 1.5);
+    let on = circles(true);
+    assert_eq!(on.len(), 2, "{on:?}");
+    assert!(on.iter().all(|(_, _, stroke)| stroke.width == 0.0 || stroke.color == color::Accent::VALUE));
+    assert!(on.iter().any(|(radius, fill, _)| *radius == 3.0 && *fill == color::Accent::VALUE), "{on:?}");
+}
+
+#[test]
+fn radio_keeps_the_label_where_the_other_leading_parts_put_it() {
+    let label_left = |leading: MenuLeading| {
+        let item = MenuItem::new(Sample::text("Ready")).leading(leading);
+        let shapes = ItemPaint::shapes(&item, InteractionState::Rest);
+        PaintCapture::text_rects(&shapes).into_iter().find(|(text, _)| text == "Ready").map(|(_, rect)| rect.left())
+    };
+    assert_eq!(label_left(MenuLeading::Radio(true)), label_left(MenuLeading::Check));
+    assert_eq!(label_left(MenuLeading::Radio(false)), label_left(MenuLeading::None));
+}
+
+#[test]
 fn leaf_click_closes_menu_and_disabled_item_does_not_click() {
     let mut harness = ClickProbe::harness_with((0_usize, 0_usize), |ui, (renames, copies)| {
         let target = ui.allocate_response(vec2(200.0, 40.0), Sense::click());

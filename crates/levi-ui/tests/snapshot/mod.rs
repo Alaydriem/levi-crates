@@ -157,3 +157,43 @@ fn snapshot_key_glyphs() {
 fn snapshot_confirm_popover() {
     SheetSnapshot::check(GallerySheet::ConfirmPopover);
 }
+
+#[test]
+fn snapshot_value_row() {
+    SheetSnapshot::check(GallerySheet::ValueRow);
+}
+
+#[test]
+fn snapshot_swatch_row() {
+    SheetSnapshot::check(GallerySheet::SwatchRow);
+}
+
+#[test]
+fn snapshot_legend_card() {
+    SheetSnapshot::check(GallerySheet::LegendCard);
+}
+
+#[test]
+fn snapshot_toast_line() {
+    SheetSnapshot::check(GallerySheet::ToastLine);
+}
+
+#[test]
+fn snapshot_empty_state_card() {
+    SheetSnapshot::check(GallerySheet::EmptyStateCard);
+}
+
+#[test]
+fn snapshot_text_field_swatch() {
+    SheetSnapshot::check(GallerySheet::TextFieldSwatch);
+}
+
+#[test]
+fn snapshot_segmented_grid() {
+    SheetSnapshot::check(GallerySheet::SegmentedGrid);
+}
+
+#[test]
+fn snapshot_menu_item_radio() {
+    SheetSnapshot::check(GallerySheet::MenuItemRadio);
+}

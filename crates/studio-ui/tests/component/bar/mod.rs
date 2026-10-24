@@ -1,4 +1,5 @@
 mod scene_switcher_chip;
+mod scene_switcher_list;
 mod status_bar;
 mod top_bar;
 mod transport;

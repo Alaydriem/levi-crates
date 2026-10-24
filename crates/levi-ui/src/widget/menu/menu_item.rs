@@ -1,4 +1,4 @@
-use egui::{Color32, CursorIcon, Painter, Rect, Response, Sense, Ui, pos2, vec2};
+use egui::{Color32, CursorIcon, Painter, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 use levi_i18n::text::Text;
 
 use super::{MenuLeading, MenuTone, MenuTrailing};
@@ -27,6 +27,8 @@ impl MenuItem {
     const LABEL: TextStyle = TextStyle::new(TypeSize::Help, FontFace::Regular);
     const SHORTCUT: TextStyle = TextStyle::new(TypeSize::Caption, FontFace::Regular);
     const REASON: TextStyle = TextStyle::new(TypeSize::Micro, FontFace::Regular);
+    /// Paper: Menu item sheet, the radio mark's outside diameter.
+    const RADIO: f32 = 12.0;
 
     pub fn new(text: Text) -> Self {
         Self { text, leading: MenuLeading::None, trailing: MenuTrailing::None, tone: MenuTone::Normal, disabled: None }
@@ -103,6 +105,18 @@ impl MenuItem {
                 Icon::Check.paint(painter, slot, IconSize::Regular, <color::AccentHover as ColorToken>::VALUE);
             }
             MenuLeading::Swatch(colour) => SwatchDot::paint(painter, slot, colour),
+            MenuLeading::Radio(chosen) => Self::paint_radio(painter, slot, chosen),
+        }
+    }
+
+    // the ring is `RADIO` across outside; the stroke sits on the circle line, so the radius loses half of it
+    fn paint_radio(painter: &Painter, slot: Rect, chosen: bool) {
+        let width = <spacing::StrokeThin as SpacingToken>::VALUE;
+        let ring = if chosen { <color::Accent as ColorToken>::VALUE } else { <color::TextDim as ColorToken>::VALUE };
+        painter.circle_stroke(slot.center(), (Self::RADIO - width) / 2.0, Stroke::new(width, ring));
+        if chosen {
+            let dot = <spacing::Dot as SpacingToken>::VALUE;
+            painter.circle_filled(slot.center(), dot / 2.0, <color::Accent as ColorToken>::VALUE);
         }
     }
 

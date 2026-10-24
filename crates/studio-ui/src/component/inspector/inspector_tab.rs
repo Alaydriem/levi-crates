@@ -3,24 +3,22 @@ use levi_ui::icon::Icon;
 
 use crate::message::StudioUiMessage;
 
-/// The inspector's tabs, in strip order.
+/// The inspector's tabs, in strip order. A selected track header with no selected key is a state of the Key tab.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InspectorTab {
     Key,
     Scene,
     Players,
-    Track,
 }
 
 impl InspectorTab {
-    pub const ALL: [Self; 4] = [Self::Key, Self::Scene, Self::Players, Self::Track];
+    pub const ALL: [Self; 3] = [Self::Key, Self::Scene, Self::Players];
 
     pub fn label(self) -> Text {
         Text::message(match self {
             Self::Key => StudioUiMessage::InspectorKey,
             Self::Scene => StudioUiMessage::InspectorScene,
             Self::Players => StudioUiMessage::InspectorPlayers,
-            Self::Track => StudioUiMessage::InspectorTrack,
         })
     }
 
@@ -30,7 +28,6 @@ impl InspectorTab {
             Self::Key => Icon::Edit,
             Self::Scene => Icon::Video,
             Self::Players => Icon::People,
-            Self::Track => Icon::List,
         }
     }
 

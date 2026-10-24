@@ -2,9 +2,11 @@ use egui::Ui;
 use levi_ui::gallery::GallerySheet;
 
 use super::{
-    CaptureRailPage, CurvePlotPage, DialogsPage, EasingPopoverPage, GalleryState, GlyphsPage, InspectorPage,
-    PathMapPage, SceneSwitcherChipPage, StatusBadgePage, StatusBarPage, TimelinePage, TimelineRowsPage,
-    TimelineSamples, TimelineTracksPage, TopBarPage, TransportPage, ViewerChipsPage, ViewerPage,
+    CaptureRailPage, CurvePlotPage, DialogsPage, EasingPopoverPage, EditLockBannerPage, GalleryState, GlyphsPage,
+    HeroCardPage, InspectorPage, KeyHeaderPage, LibraryAppBarPage, PathMapPage, PlayerRowPage, ReplayRowPage,
+    SceneCardPage, SceneSwitcherChipPage, SceneSwitcherListPage, SourceListPage, StatusBadgePage, StatusBarPage,
+    TimelinePage, TimelineRowsPage, TimelineSamples, TimelineTracksPage, TopBarPage, TransportPage, ViewerChipsPage,
+    ViewerPage,
 };
 
 /// One gallery page per Paper artboard group, in Paper order. Each component task adds its pages.
@@ -37,10 +39,19 @@ pub enum GalleryPage {
     ConfirmDialog,
     RenameDialog,
     CaptureRail,
+    LibraryAppBar,
+    SceneCard,
+    HeroCard,
+    EditLockBanner,
+    PlayerRow,
+    KeyHeader,
+    SceneSwitcherList,
+    ReplayRow,
+    SourceList,
 }
 
 impl GalleryPage {
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 36] = [
         Self::Glyphs,
         Self::StatusBadge,
         Self::CurvePlot,
@@ -68,6 +79,15 @@ impl GalleryPage {
         Self::ConfirmDialog,
         Self::RenameDialog,
         Self::CaptureRail,
+        Self::LibraryAppBar,
+        Self::SceneCard,
+        Self::HeroCard,
+        Self::EditLockBanner,
+        Self::PlayerRow,
+        Self::KeyHeader,
+        Self::SceneSwitcherList,
+        Self::ReplayRow,
+        Self::SourceList,
     ];
 
     /// The Paper artboard name, shown in the gallery's page list.
@@ -100,6 +120,15 @@ impl GalleryPage {
             Self::ConfirmDialog => "Confirm delete",
             Self::RenameDialog => "Rename",
             Self::CaptureRail => "Capture rail",
+            Self::LibraryAppBar => "Library app bar",
+            Self::SceneCard => "Scene card",
+            Self::HeroCard => "Hero card",
+            Self::EditLockBanner => "Edit lock banner",
+            Self::PlayerRow => "Player row",
+            Self::KeyHeader => "Key header",
+            Self::SceneSwitcherList => "Scene switcher list",
+            Self::ReplayRow => "Replay row",
+            Self::SourceList => "Source list",
         }
     }
 
@@ -133,6 +162,15 @@ impl GalleryPage {
             Self::ConfirmDialog => "confirm_dialog",
             Self::RenameDialog => "rename_dialog",
             Self::CaptureRail => "capture_rail",
+            Self::LibraryAppBar => "library_app_bar",
+            Self::SceneCard => "scene_card",
+            Self::HeroCard => "hero_card",
+            Self::EditLockBanner => "edit_lock_banner",
+            Self::PlayerRow => "player_row",
+            Self::KeyHeader => "key_header",
+            Self::SceneSwitcherList => "scene_switcher_list",
+            Self::ReplayRow => "replay_row",
+            Self::SourceList => "source_list",
         }
     }
 
@@ -140,7 +178,19 @@ impl GalleryPage {
     pub fn width(self) -> f32 {
         match self {
             // these pages use the levi-ui sheet chrome
-            Self::Glyphs | Self::StatusBadge | Self::CurvePlot | Self::SceneSwitcherChip => GallerySheet::WIDTH,
+            Self::Glyphs
+            | Self::StatusBadge
+            | Self::CurvePlot
+            | Self::SceneSwitcherChip
+            | Self::LibraryAppBar
+            | Self::SceneCard
+            | Self::HeroCard
+            | Self::EditLockBanner
+            | Self::PlayerRow
+            | Self::KeyHeader
+            | Self::SceneSwitcherList
+            | Self::ReplayRow
+            | Self::SourceList => GallerySheet::WIDTH,
             Self::TopBar => TopBarPage::WIDTH,
             Self::Transport => TransportPage::WIDTH,
             Self::StatusBar => StatusBarPage::WIDTH,
@@ -194,6 +244,15 @@ impl GalleryPage {
             Self::ConfirmDialog => DialogsPage::confirm(ui, state),
             Self::RenameDialog => DialogsPage::rename(ui, state),
             Self::CaptureRail => CaptureRailPage::show(ui, state),
+            Self::LibraryAppBar => LibraryAppBarPage::show(ui, state),
+            Self::SceneCard => SceneCardPage::show(ui, state),
+            Self::HeroCard => HeroCardPage::show(ui, state),
+            Self::EditLockBanner => EditLockBannerPage::show(ui, state),
+            Self::PlayerRow => PlayerRowPage::show(ui, state),
+            Self::KeyHeader => KeyHeaderPage::show(ui, state),
+            Self::SceneSwitcherList => SceneSwitcherListPage::show(ui, state),
+            Self::ReplayRow => ReplayRowPage::show(ui, state),
+            Self::SourceList => SourceListPage::show(ui, state),
         }
     }
 }

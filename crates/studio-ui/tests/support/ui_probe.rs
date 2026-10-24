@@ -84,6 +84,40 @@ impl UiProbe {
         self.frame(vec![release], &mut show).0
     }
 
+    // move, press and release the right button at `at`; returns the value of the release frame
+    pub fn secondary_click<T>(&mut self, at: Pos2, mut show: impl FnMut(&mut Ui) -> T) -> T {
+        self.frame(vec![Event::PointerMoved(at)], &mut show);
+        let button = |pressed| Event::PointerButton {
+            pos: at,
+            button: PointerButton::Secondary,
+            pressed,
+            modifiers: Default::default(),
+        };
+        self.frame(vec![button(true)], &mut show);
+        self.frame(vec![button(false)], &mut show).0
+    }
+
+    // every rect shape, nested shapes included
+    pub fn rects(shapes: &[Shape]) -> Vec<egui::epaint::RectShape> {
+        let mut out = Vec::new();
+        for shape in shapes {
+            match shape {
+                Shape::Rect(rect) => out.push(rect.clone()),
+                Shape::Vec(inner) => out.extend(Self::rects(inner)),
+                _ => {}
+            }
+        }
+        out
+    }
+
+    // the painted text of every shape that is not an icon glyph (private-use characters)
+    pub fn words(shapes: &[Shape]) -> Vec<String> {
+        Self::texts(shapes)
+            .into_iter()
+            .filter(|text| !text.chars().all(|c| ('\u{E000}'..='\u{F8FF}').contains(&c)))
+            .collect()
+    }
+
     // one frame with `key` pressed
     pub fn key(key: egui::Key) -> Event {
         Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() }

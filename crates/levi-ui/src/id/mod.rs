@@ -1,6 +1,12 @@
+use std::hash::{Hash, Hasher};
+
+mod id_scope;
+
+pub use id_scope::IdScope;
+
 /// The egui ids levi-ui keeps for itself, or adds under a caller's id. Widgets that keep state take
 /// their base id from the caller.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LeviUiId {
     /// The localizer the widgets resolve `Text` with.
     Locale,
@@ -26,4 +32,11 @@ pub enum LeviUiId {
     DropdownHighlight,
     /// The confirm popover's area.
     ConfirmPopover,
+}
+
+impl Hash for LeviUiId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        IdScope::hash_type::<Self, H>(state);
+        std::mem::discriminant(self).hash(state);
+    }
 }

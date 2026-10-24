@@ -150,3 +150,48 @@ fn snapshot_rename_dialog() {
 fn snapshot_capture_rail() {
     PageSnapshot::check(GalleryPage::CaptureRail);
 }
+
+#[test]
+fn snapshot_library_app_bar() {
+    PageSnapshot::check(GalleryPage::LibraryAppBar);
+}
+
+#[test]
+fn snapshot_scene_card() {
+    PageSnapshot::check(GalleryPage::SceneCard);
+}
+
+#[test]
+fn snapshot_hero_card() {
+    PageSnapshot::check(GalleryPage::HeroCard);
+}
+
+#[test]
+fn snapshot_edit_lock_banner() {
+    PageSnapshot::check(GalleryPage::EditLockBanner);
+}
+
+#[test]
+fn snapshot_player_row() {
+    PageSnapshot::check(GalleryPage::PlayerRow);
+}
+
+#[test]
+fn snapshot_key_header() {
+    PageSnapshot::check(GalleryPage::KeyHeader);
+}
+
+#[test]
+fn snapshot_scene_switcher_list() {
+    PageSnapshot::check(GalleryPage::SceneSwitcherList);
+}
+
+#[test]
+fn snapshot_replay_row() {
+    PageSnapshot::check(GalleryPage::ReplayRow);
+}
+
+#[test]
+fn snapshot_source_list() {
+    PageSnapshot::check(GalleryPage::SourceList);
+}

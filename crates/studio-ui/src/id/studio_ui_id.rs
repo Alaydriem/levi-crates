@@ -1,6 +1,10 @@
+use std::hash::{Hash, Hasher};
+
+use levi_ui::id::IdScope;
+
 /// The egui ids of the studio-ui components, used with `Id::unique`. Each component task adds
 /// the ids its component needs.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StudioUiId {
     /// The inspector tab strip (its underline slides).
     InspectorTabs,
@@ -29,4 +33,18 @@ pub enum StudioUiId {
     UndoHistory,
     /// The capture rail's Discard question.
     DiscardPopover,
+    /// The Library app bar's tabs and buttons, and the hero card's button.
+    LibraryAppBar,
+    HeroCard,
+    /// The scene switcher list's rows.
+    SceneSwitcherList,
+    /// The source list's remove buttons and its add button.
+    SourceList,
+}
+
+impl Hash for StudioUiId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        IdScope::hash_type::<Self, H>(state);
+        std::mem::discriminant(self).hash(state);
+    }
 }

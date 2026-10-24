@@ -3,10 +3,11 @@ use egui::Ui;
 use super::GalleryState;
 use super::sheet::{
     AvatarSheet, BannerSheet, CardFrameSheet, CheckboxSheet, ChipSheet, ColourFieldSheet, ConfirmPopoverSheet,
-    CornerButtonSheet, DragFieldSheet, DropdownSheet, EmptyStateSheet, IconButtonSheet, KeyGlyphsSheet, ListRowSheet,
-    LoadingStateSheet, MenuItemSheet, ModalFrameSheet, NavEntrySheet, PageHeaderSheet, SectionCardSheet,
-    SectionHeaderSheet, SegmentedSheet, SliderSheet, SplitterAndScrollSheet, StatusPillSheet, TabRowSheet, TableSheet,
-    TextButtonSheet, TextFieldSheet, ToastSheet, ToggleSheet,
+    CornerButtonSheet, DragFieldSheet, DropdownSheet, EmptyStateCardSheet, EmptyStateSheet, IconButtonSheet,
+    KeyGlyphsSheet, LegendCardSheet, ListRowSheet, LoadingStateSheet, MenuItemRadioSheet, MenuItemSheet,
+    ModalFrameSheet, NavEntrySheet, PageHeaderSheet, SectionCardSheet, SectionHeaderSheet, SegmentedGridSheet,
+    SegmentedSheet, SliderSheet, SplitterAndScrollSheet, StatusPillSheet, SwatchRowSheet, TabRowSheet, TableSheet,
+    TextButtonSheet, TextFieldSheet, TextFieldSwatchSheet, ToastLineSheet, ToastSheet, ToggleSheet, ValueRowSheet,
 };
 
 /// One gallery page per Paper widget sheet, in Paper order.
@@ -43,12 +44,20 @@ pub enum GallerySheet {
     CornerButton,
     KeyGlyphs,
     ConfirmPopover,
+    ValueRow,
+    SwatchRow,
+    LegendCard,
+    ToastLine,
+    EmptyStateCard,
+    TextFieldSwatch,
+    SegmentedGrid,
+    MenuItemRadio,
 }
 
 impl GallerySheet {
     /// The width of every Paper widget artboard.
     pub const WIDTH: f32 = 1240.0;
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 39] = [
         Self::Toggle,
         Self::Slider,
         Self::IconButton,
@@ -80,6 +89,14 @@ impl GallerySheet {
         Self::CornerButton,
         Self::KeyGlyphs,
         Self::ConfirmPopover,
+        Self::ValueRow,
+        Self::SwatchRow,
+        Self::LegendCard,
+        Self::ToastLine,
+        Self::EmptyStateCard,
+        Self::TextFieldSwatch,
+        Self::SegmentedGrid,
+        Self::MenuItemRadio,
     ];
 
     /// The Paper sheet name, shown in the gallery's page list.
@@ -116,6 +133,14 @@ impl GallerySheet {
             Self::CornerButton => "Corner buttons",
             Self::KeyGlyphs => "Key glyphs",
             Self::ConfirmPopover => "Popover · Confirm",
+            Self::ValueRow => "Value row",
+            Self::SwatchRow => "Swatch row",
+            Self::LegendCard => "Legend card",
+            Self::ToastLine => "Toast · one line",
+            Self::EmptyStateCard => "Empty state, Card (no icon)",
+            Self::TextFieldSwatch => "Text field, Leading swatch",
+            Self::SegmentedGrid => "Segmented, Grid (two rows)",
+            Self::MenuItemRadio => "Menu item, Radio",
         }
     }
 
@@ -153,6 +178,14 @@ impl GallerySheet {
             Self::CornerButton => "corner_button",
             Self::KeyGlyphs => "key_glyphs",
             Self::ConfirmPopover => "confirm_popover",
+            Self::ValueRow => "value_row",
+            Self::SwatchRow => "swatch_row",
+            Self::LegendCard => "legend_card",
+            Self::ToastLine => "toast_line",
+            Self::EmptyStateCard => "empty_state_card",
+            Self::TextFieldSwatch => "text_field_swatch",
+            Self::SegmentedGrid => "segmented_grid",
+            Self::MenuItemRadio => "menu_item_radio",
         }
     }
 
@@ -189,6 +222,14 @@ impl GallerySheet {
             Self::CornerButton => CornerButtonSheet::show(ui, state),
             Self::KeyGlyphs => KeyGlyphsSheet::show(ui, state),
             Self::ConfirmPopover => ConfirmPopoverSheet::show(ui, state),
+            Self::ValueRow => ValueRowSheet::show(ui, state),
+            Self::SwatchRow => SwatchRowSheet::show(ui, state),
+            Self::LegendCard => LegendCardSheet::show(ui, state),
+            Self::ToastLine => ToastLineSheet::show(ui, state),
+            Self::EmptyStateCard => EmptyStateCardSheet::show(ui, state),
+            Self::TextFieldSwatch => TextFieldSwatchSheet::show(ui, state),
+            Self::SegmentedGrid => SegmentedGridSheet::show(ui, state),
+            Self::MenuItemRadio => MenuItemRadioSheet::show(ui, state),
         }
     }
 }

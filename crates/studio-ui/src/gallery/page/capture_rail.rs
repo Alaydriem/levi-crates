@@ -1,12 +1,13 @@
 use egui::{Rect, Sense, Ui, UiBuilder, vec2};
+use levi_i18n::text::{Text, UserText};
 use levi_ui::draw::{TextStyle, TypeSize};
 use levi_ui::font::FontFace;
 use levi_ui::gallery::SheetGrid;
+use levi_ui::icon::Icon;
 use levi_ui::state::InteractionState;
 use levi_ui::tokens::{ColorToken, color};
 
 use crate::gallery::GalleryState;
-use crate::theme::Icon;
 use crate::widgets::{RailIcon, RailTile, RailTimer, RailTimerState, RailTone};
 
 /// Paper: Entry Point, `Components · capture rail & corner buttons` (`A89-0`), "RAIL TILE": each tile state, the
@@ -28,7 +29,7 @@ impl CaptureRailPage {
                 SheetGrid::head(ui, "RAIL TILE");
                 ui.horizontal_top(|ui| {
                     ui.spacing_mut().item_spacing = vec2(Self::GAP, 0.0);
-                    let pause = RailIcon::Glyph(Icon::PAUSE);
+                    let pause = RailIcon::Glyph(Icon::Pause);
                     let tiles = [
                         ("Default", pause, "Pause", RailTone::Normal, InteractionState::Rest),
                         ("Hover", pause, "Pause", RailTone::Normal, InteractionState::Hover),
@@ -36,10 +37,10 @@ impl CaptureRailPage {
                         ("Focus", pause, "Pause", RailTone::Normal, InteractionState::Focused),
                         ("Disabled", pause, "Pause", RailTone::Normal, InteractionState::Disabled),
                         ("Record", RailIcon::RecordDot, "Record", RailTone::Normal, InteractionState::Rest),
-                        ("Resume", RailIcon::Glyph(Icon::PLAY), "Resume", RailTone::Active, InteractionState::Rest),
+                        ("Resume", RailIcon::Glyph(Icon::Play), "Resume", RailTone::Active, InteractionState::Rest),
                         (
                             "Discard hover",
-                            RailIcon::Glyph(Icon::DELETE),
+                            RailIcon::Glyph(Icon::Delete),
                             "Discard",
                             RailTone::Danger,
                             InteractionState::Hover,
@@ -49,7 +50,7 @@ impl CaptureRailPage {
                         Self::cell(ui, caption, |ui| {
                             let (rect, _) =
                                 ui.allocate_exact_size(vec2(RailTile::SIDE, RailTile::SIDE), Sense::hover());
-                            RailTile::paint(ui.painter(), rect, icon, label, tone, state);
+                            RailTile::paint(ui.painter(), rect, icon, &Self::words(label), tone, state);
                         });
                     }
                     for (caption, state) in
@@ -62,6 +63,11 @@ impl CaptureRailPage {
                 });
             });
         });
+    }
+
+    // a sample label, as a caller gets it from its model
+    fn words(text: &str) -> Text {
+        Text::user(UserText::from_model(text.to_owned()))
     }
 
     // a tile and its caption under it, in a column `CELL` wide

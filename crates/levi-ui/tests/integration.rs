@@ -3,6 +3,7 @@ mod draw;
 mod font;
 mod glyph;
 mod icon;
+mod id;
 mod message;
 mod motion;
 mod snapshot;

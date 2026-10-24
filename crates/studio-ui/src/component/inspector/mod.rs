@@ -7,6 +7,8 @@ mod inspector_locked;
 mod inspector_rail;
 mod inspector_tab;
 mod inspector_tabs;
+mod key_header;
+mod player_row;
 mod undo_history_popover;
 
 pub use inspector_drawer::InspectorDrawer;
@@ -14,4 +16,6 @@ pub use inspector_locked::InspectorLocked;
 pub use inspector_rail::InspectorRail;
 pub use inspector_tab::InspectorTab;
 pub use inspector_tabs::InspectorTabs;
+pub use key_header::{KeyHeader, KeyHeaderTone, KeyHeaderView};
+pub use player_row::{PlayerRow, PlayerRowAction, PlayerRowView};
 pub use undo_history_popover::{UndoHistoryAction, UndoHistoryPopover, UndoHistoryView};

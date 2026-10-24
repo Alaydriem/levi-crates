@@ -15,6 +15,17 @@ fn tab_click_selects_the_tab() {
 }
 
 #[test]
+fn inspector_has_three_tabs() {
+    assert_eq!(InspectorTab::ALL, [InspectorTab::Key, InspectorTab::Scene, InspectorTab::Players]);
+    let mut probe = UiProbe::new(430.0);
+    let shapes = probe.shapes(|ui| InspectorTabs::new(InspectorTab::Key).show(ui));
+    for name in ["Key", "Scene", "Players"] {
+        assert!(UiProbe::text_rect(&shapes, name).is_some(), "the {name} tab is painted");
+    }
+    assert!(UiProbe::text_rect(&shapes, "Track").is_none(), "Track is a state of the Key tab, not a tab");
+}
+
+#[test]
 fn rail_opens_the_drawer() {
     let screen = Rect::from_min_size(pos2(0.0, 0.0), vec2(1280.0, 720.0));
     let mut probe = UiProbe::sized(1280.0, 720.0);

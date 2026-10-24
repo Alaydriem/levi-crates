@@ -5,7 +5,7 @@ use super::InspectorTab;
 use crate::id::StudioUiId;
 
 /// Paper: Menus + Dialogs, `Key active` (`4JQ-0`). The inspector's tab strip: the levi-ui `TabRow` at the Inspector
-/// size, with the four tab names.
+/// size, with the three tab names.
 pub struct InspectorTabs {
     selected: InspectorTab,
     id: Id,

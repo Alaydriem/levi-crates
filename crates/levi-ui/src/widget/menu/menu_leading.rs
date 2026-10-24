@@ -12,4 +12,6 @@ pub enum MenuLeading {
     Check,
     /// A swatch dot in a token colour the caller picks (scene colours).
     Swatch(Color32),
+    /// A radio mark, one option out of several: a ring, with an accent dot when it is the chosen option.
+    Radio(bool),
 }

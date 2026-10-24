@@ -1,7 +1,10 @@
 use egui::{Align2, Color32, Painter, Rect, Response, Sense, Ui, Vec2, pos2};
+use levi_i18n::text::Text;
 use levi_ui::draw::{Corner, Draw, TextFit, TextStyle, TypeSize};
 use levi_ui::font::FontFace;
+use levi_ui::icon::IconSize;
 use levi_ui::state::InteractionState;
+use levi_ui::text::UiText;
 use levi_ui::tokens::rule::{Elevation, FocusRing};
 use levi_ui::tokens::{ColorToken, RadiusToken, SpacingToken, TextSizeToken, color, radius, spacing, text_size};
 
@@ -24,22 +27,23 @@ impl RailTile {
     const GAP: f32 = 8.0;
     const LABEL: TextStyle = TextStyle::new(TypeSize::Help, FontFace::Semibold);
 
-    pub fn show(ui: &mut Ui, icon: RailIcon, label: &str, tone: RailTone, enabled: bool) -> Response {
+    pub fn show(ui: &mut Ui, icon: RailIcon, label: &Text, tone: RailTone, enabled: bool) -> Response {
         let sense = if enabled { Sense::click() } else { Sense::hover() };
         let (rect, response) = ui.allocate_exact_size(Vec2::splat(Self::SIDE), sense);
         Self::paint(ui.painter(), rect, icon, label, tone, InteractionState::of(&response, enabled));
         response
     }
 
-    /// Paints the tile in `rect` in `state`.
-    pub fn paint(painter: &Painter, rect: Rect, icon: RailIcon, label: &str, tone: RailTone, state: InteractionState) {
+    /// Paints the tile in `rect` in `state`. The label is resolved in the locale of the painter's context.
+    pub fn paint(painter: &Painter, rect: Rect, icon: RailIcon, label: &Text, tone: RailTone, state: InteractionState) {
         let painter = state.painter(painter);
         if state == InteractionState::Focused {
             FocusRing::paint(&painter, rect, Corner::Panel.radius(rect));
         }
         let (fill, border, ink, label_ink) = Self::colours(tone, state.inner());
         Draw::surface(&painter, rect, Corner::Panel, fill, Some(border), Elevation::Floating);
-        let galley = Draw::galley(&painter, label, Self::LABEL, label_ink, TextFit::Truncate(rect.width()));
+        let words = UiText::resolve(painter.ctx(), label);
+        let galley = Draw::galley(&painter, &words, Self::LABEL, label_ink, TextFit::Truncate(rect.width()));
         let mark = match icon {
             RailIcon::Glyph(_) => Self::ICON,
             RailIcon::RecordDot => Self::DOT,
@@ -48,8 +52,7 @@ impl RailTile {
         let centre = pos2(rect.center().x, top + mark / 2.0);
         match icon {
             RailIcon::Glyph(glyph) => {
-                let font = FontFace::Icons.id(Self::ICON);
-                painter.text(centre, Align2::CENTER_CENTER, glyph, font, ink);
+                glyph.paint(&painter, Rect::from_center_size(centre, Vec2::splat(Self::ICON)), IconSize::Regular, ink);
             }
             RailIcon::RecordDot => {
                 let dot = if state.inner() == InteractionState::Rest {
