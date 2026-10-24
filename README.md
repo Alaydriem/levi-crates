@@ -1,83 +1,37 @@
 <div align="center">
 
-# Alaydriem's Mod Manager
+# levi-crates
 
-[![Release](https://img.shields.io/github/v/release/alaydriem/levi-crates?include_prereleases)](https://github.com/alaydriem/levi-crates/releases)
 [![Build](https://img.shields.io/github/actions/workflow/status/alaydriem/levi-crates/ci.yml?branch=master&label=build)](https://github.com/alaydriem/levi-crates/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/alaydriem/levi-crates)](./LICENSE)
-![Minecraft Bedrock](https://img.shields.io/badge/Minecraft_Bedrock-1.26.51-62B47A)
-[![LeviLamina](https://img.shields.io/badge/LeviLamina-26.51.6-4A90D9)](https://github.com/LiteLDev/LeviLamina)
 
 </div>
 
-A mod manager for [LeviLamina](https://github.com/LiteLDev/LeviLamina) client mods. Mods that tie into it get a shared settings panel, keybinds and conflict detection.
+The shared egui UI toolkit and translation runtime for Alaydriem's LeviLamina mods. The mods and
+[Alaydriem's Mod Manager](https://github.com/alaydriem/levi-modmanager) use these crates by path, from a
+`levi-crates` checkout next to their own.
 
-## Features
-
-- Mod list
-- Settings for each mod
-- Keybind management
-- Conflict view
-
-<table>
-  <tr>
-    <td width="50%"><img src="./assets/mod-list.jpg" alt="Mod list"></td>
-    <td width="50%"><img src="./assets/mod-settings.jpg" alt="Mod settings"></td>
-  </tr>
-  <tr>
-    <td width="50%"><img src="./assets/keybinds.jpg" alt="Keybinds"></td>
-    <td width="50%"><img src="./assets/conflicts.jpg" alt="Conflicts"></td>
-  </tr>
-</table>
-
-## Installation
-
-Requires the client build of LeviLamina.
-
-```powershell
-lip install github.com/alaydriem/levi-crates#client
-```
-
-Or download the zip from the [latest release](https://github.com/alaydriem/levi-crates/releases/latest) and extract it into `mods/`.
-
-| Manager | Minecraft Bedrock | LeviLamina |
+| Crate | Path | Owns |
 | --- | --- | --- |
-| 0.1.0 | 1.26.51 | 26.51.6+ |
-
-## Usage
-
-Open the panel with <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>F10</kbd>, or the **Mods** button on the start and pause screens. The key can be changed on the Keybinds page.
-
-Config lives in `mods/alaydriem-mod-manager/config/config.hcl`.
-
-## For mod authors
-
-See [`examples/demo-mod/`](./examples/demo-mod/) for a complete integration. Rust mods use the `amm-client` crate; C++ mods use [`include/alaydriem_mod_manager.h`](./include/alaydriem_mod_manager.h).
-
-Add the manager as a dependency in `manifest.json`:
-
-```json
-"dependencies": [
-  { "name": "alaydriem-mod-manager", "version": ">=0.1.0 <0.2.0" }
-]
-```
+| `levi-ui` | `crates/levi-ui/` | The general UI toolkit: the generated tokens and token rules, the theme and fonts, `Icon`, glyphs, `Draw`, `Motion`, the state model, every general widget (one per Paper sheet) and the widget gallery. |
+| `levi-ui-gen` | `crates/levi-ui-gen/` | Writes the token types of `levi-ui` and `studio-ui` from `crates/levi-ui/design/tokens.json` and `ownership.json` (`design:generate`) |
+| `levi-i18n` | `crates/levi-i18n/` | The translation runtime: `Message`, `Domain`, `Text`, `UserText`, `Args`, plural rules, `LocalizationService` |
+| `levi-i18n-tool` | `crates/levi-i18n-tool/` | Build-time translation tools: `.pot` writing, pack compiling, the `en_XA` pseudo-locale, coverage reports, and `CatalogCheck` for the message tests |
+| `levi-rules` | `crates/levi-rules/` | Test-only source scanners for the UI and design rules (rule 22): `DesignLiteralScan`, `WidgetNames` with `DuplicateScan`, `ForbiddenFolders`. |
+| `studio-ui` | `crates/studio-ui/` | The studio tokens, glyphs and components, built on `levi-ui`. |
 
 ## Building
 
-Requires Windows x64, [mise](https://mise.jdx.dev), rustup, [cargo-nextest](https://nexte.st) and LLVM (`clang-cl`).
+Requires Windows x64, [mise](https://mise.jdx.dev), rustup and [cargo-nextest](https://nexte.st).
 
 ```powershell
 mise trust
 mise run preflight
-mise run build-mod
+mise run check
 mise run test
 ```
 
-## Mods using the manager
-
-- [Alaydriem's Mini Map](https://github.com/alaydriem/levi-minimap)
-- [Alaydriem's Freecam](https://github.com/alaydriem/levi-freecam)
-- [Alaydriem's Light Levels](https://github.com/alaydriem/levi-levels)
+`mise run levi-ui:gallery` and `mise run studio-ui:gallery` open the widget galleries.
 
 ## License
 
