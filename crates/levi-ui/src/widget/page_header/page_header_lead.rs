@@ -1,5 +1,4 @@
-use egui::epaint::RectShape;
-use egui::{Color32, CornerRadius, Painter, Rect};
+use egui::{Painter, Rect};
 use levi_i18n::text::UserText;
 
 use crate::draw::{Corner, Draw};
@@ -13,8 +12,6 @@ pub enum PageHeaderLead {
     Tile(Icon, ChipTone),
     /// A large avatar with the name's first letter, or the picture when there is one.
     Avatar(UserText, Option<AvatarImage>),
-    /// A picture on the tile's square with no fill or border, for a mark that brings its own shape.
-    Picture(AvatarImage),
 }
 
 impl PageHeaderLead {
@@ -22,8 +19,8 @@ impl PageHeaderLead {
     /// `--spacing-tile-large`.
     pub fn side(&self, panel: bool) -> f32 {
         match (self, panel) {
-            (Self::Tile(..) | Self::Picture(_), true) => <spacing::Tile as SpacingToken>::VALUE,
-            (Self::Tile(..) | Self::Picture(_), false) => <spacing::TileLarge as SpacingToken>::VALUE,
+            (Self::Tile(..), true) => <spacing::Tile as SpacingToken>::VALUE,
+            (Self::Tile(..), false) => <spacing::TileLarge as SpacingToken>::VALUE,
             (Self::Avatar(..), _) => AvatarSize::Large.side(),
         }
     }
@@ -36,12 +33,6 @@ impl PageHeaderLead {
                 icon.paint(painter, rect, IconSize::Regular, tone.text());
             }
             Self::Avatar(name, image) => Avatar::new(name, AvatarSize::Large).image(image.clone()).paint(painter, rect),
-            Self::Picture(image) => {
-                painter.add(RectShape {
-                    brush: Some(image.brush()),
-                    ..RectShape::filled(rect, CornerRadius::ZERO, Color32::WHITE)
-                });
-            }
         }
     }
 }

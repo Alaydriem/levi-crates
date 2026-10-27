@@ -1,11 +1,11 @@
-use egui::{Rect, Shape, TextureId, vec2};
+use egui::{Rect, Shape, vec2};
 use egui_kittest::Harness;
 use levi_i18n::text::UserText;
 use levi_ui::font::FontSource;
 use levi_ui::icon::Icon;
 use levi_ui::theme::Theme;
 use levi_ui::tokens::{ColorToken, color};
-use levi_ui::widget::{AvatarImage, ChipTone, IconButton, MetaSeparator, PageHeader, PageHeaderLead};
+use levi_ui::widget::{ChipTone, IconButton, MetaSeparator, PageHeader, PageHeaderLead};
 
 use crate::support::{FlowProbe, PaintCapture, Sample, ShapeText};
 
@@ -132,14 +132,4 @@ fn height_is_the_height_it_takes() {
 
     assert_eq!(header.height(), harness.state().header.height());
     assert!(panel.height() < header.height(), "the panel form's smaller tile makes a lower bar");
-}
-
-#[test]
-fn a_picture_lead_takes_the_tile_square() {
-    let picture = AvatarImage::new(TextureId::default(), vec2(64.0, 64.0));
-    let tile = PageHeaderLead::Tile(Icon::Apps, ChipTone::Accent);
-    let pictured = PageHeaderLead::Picture(picture);
-
-    assert_eq!(pictured.side(true), tile.side(true));
-    assert_eq!(pictured.side(false), tile.side(false));
 }
