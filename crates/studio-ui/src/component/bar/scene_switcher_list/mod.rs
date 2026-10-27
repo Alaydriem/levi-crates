@@ -83,10 +83,7 @@ impl<'a> SceneSwitcherList<'a> {
 
     /// Like `show`, with the rect of each row in points, in order: Original, the scenes, the footer actions. Each
     /// is keyed by the action its click gives (`SelectOriginal`, `SelectScene(n)`, `Footer(n)`).
-    pub fn show_placed(
-        &self,
-        ui: &mut Ui,
-    ) -> (Option<SceneSwitcherListAction>, Vec<(SceneSwitcherListAction, Rect)>) {
+    pub fn show_placed(&self, ui: &mut Ui) -> (Option<SceneSwitcherListAction>, Vec<(SceneSwitcherListAction, Rect)>) {
         let mut places = Vec::new();
         let width = <container::SceneMenu as ContainerToken>::VALUE;
         let (frame, allocated) = ui.allocate_exact_size(vec2(width, self.height()), Sense::hover());

@@ -71,7 +71,15 @@ impl RowProbe {
                     log.toggles += usize::from(response.toggled);
                     log.rect = response.row.rect;
                 },
-                RowLog { on: true, selects: 0, toggles: 0, actions: 0, with_action, action_off: false, rect: Rect::NOTHING },
+                RowLog {
+                    on: true,
+                    selects: 0,
+                    toggles: 0,
+                    actions: 0,
+                    with_action,
+                    action_off: false,
+                    rect: Rect::NOTHING,
+                },
             );
         harness.run();
         harness
