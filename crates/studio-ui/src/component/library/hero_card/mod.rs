@@ -1,13 +1,15 @@
 mod hero_card_action;
 mod hero_card_view;
 mod hero_picture;
+mod hero_problem;
 
 pub use hero_card_action::HeroCardAction;
 pub use hero_card_view::HeroCardView;
 pub use hero_picture::HeroPicture;
+pub use hero_problem::HeroProblem;
 
 use egui::epaint::{Mesh, RectShape};
-use egui::{Color32, CornerRadius, CursorIcon, Painter, Rect, Sense, Ui, Vec2, pos2, vec2};
+use egui::{Color32, Context, CornerRadius, CursorIcon, Painter, Rect, Sense, Ui, Vec2, pos2, vec2};
 use levi_ui::draw::{Corner, Draw, TextFit, TextStyle, TypeSize};
 use levi_ui::font::FontFace;
 use levi_ui::icon::{Icon, IconSize};
@@ -17,6 +19,7 @@ use levi_ui::tokens::rule::FocusRing;
 use levi_ui::tokens::{ColorToken, color};
 use levi_ui::widget::MetaSeparator;
 
+use crate::component::library::ReplayPlaceholder;
 use crate::id::StudioUiId;
 use crate::tokens::color as studio_color;
 
@@ -48,6 +51,13 @@ impl<'a> HeroCard<'a> {
     /// Paper: Hero card sheet, how much of the picture and of the button a broken card keeps.
     const BROKEN_PICTURE: f32 = 0.35;
     const BROKEN_BUTTON: f32 = 0.55;
+    /// Paper: Editor components, `Editor / Hero card` (`G64-0`), BROKEN card, the `Problem (title + reason)` group
+    /// (`IEH-0`): the gap between the problem's title and its reason, and the width of the group as a share of the
+    /// card (630 of 900).
+    const PROBLEM_GAP: f32 = 6.0;
+    const PROBLEM_WIDTH: f32 = 0.7;
+    const PROBLEM_TITLE: TextStyle = TextStyle::new(TypeSize::Heading, FontFace::Semibold);
+    const PROBLEM_REASON: TextStyle = TextStyle::new(TypeSize::Body, FontFace::Regular);
     const TITLE: TextStyle = TextStyle::new(TypeSize::Display, FontFace::Semibold);
     const META: TextStyle = TextStyle::new(TypeSize::Note, FontFace::Regular);
     const LABEL: TextStyle = TextStyle::new(TypeSize::Label, FontFace::Semibold);
@@ -66,9 +76,12 @@ impl<'a> HeroCard<'a> {
     pub fn show(&self, ui: &mut Ui, size: Vec2) -> Option<HeroCardAction> {
         let (rect, frame) = ui.allocate_exact_size(size, Sense::hover());
         let painter = ui.painter().clone();
-        self.paint_picture(&painter, rect);
+        self.paint_picture(ui.ctx(), &painter, rect);
         Self::paint_shade(&painter, rect);
-        self.paint_words(ui, rect);
+        let words_top = self.paint_words(ui, rect);
+        if let Some(problem) = &self.view.problem {
+            Self::paint_problem(ui, rect, words_top, problem);
+        }
         let button = Rect::from_min_size(
             pos2(
                 rect.right() - Self::INSET_RIGHT - Self::BUTTON.x,
@@ -76,7 +89,7 @@ impl<'a> HeroCard<'a> {
             ),
             Self::BUTTON,
         );
-        let enabled = !self.view.broken;
+        let enabled = self.view.problem.is_none();
         let sense = if enabled { Sense::click() } else { Sense::hover() };
         let response = ui.interact(button, frame.id.with(StudioUiId::HeroCard), sense);
         self.paint_button(ui, button, InteractionState::of(&response, enabled));
@@ -87,18 +100,12 @@ impl<'a> HeroCard<'a> {
         }
     }
 
-    fn paint_picture(&self, painter: &Painter, rect: Rect) {
+    fn paint_picture(&self, ctx: &Context, painter: &Painter, rect: Rect) {
         let radius = Corner::Panel.radius(rect);
-        let opacity = if self.view.broken { Self::BROKEN_PICTURE } else { 1.0 };
-        match self.picture {
-            Some(picture) => {
-                let tint = Color32::WHITE.gamma_multiply(opacity);
-                painter.add(
-                    RectShape::filled(rect, radius, tint).with_texture(picture.texture, picture.cover(rect.size())),
-                );
-            }
-            None => Draw::fill(painter, rect, Corner::Panel, <color::BgApp as ColorToken>::VALUE),
-        }
+        let opacity = if self.view.problem.is_some() { Self::BROKEN_PICTURE } else { 1.0 };
+        let tint = Color32::WHITE.gamma_multiply(opacity);
+        let picture = self.picture.unwrap_or_else(|| ReplayPlaceholder::picture(ctx));
+        painter.add(RectShape::filled(rect, radius, tint).with_texture(picture.texture, picture.cover(rect.size())));
     }
 
     // transparent at the top of the shade, the full shade from `SHADE_FULL` down; the last corner radius is
@@ -125,8 +132,8 @@ impl<'a> HeroCard<'a> {
         painter.rect_filled(strip, CornerRadius { nw: 0, ne: 0, sw: corner.sw, se: corner.se }, fade);
     }
 
-    // the title and the facts, bottom aligned with the button
-    fn paint_words(&self, ui: &Ui, rect: Rect) {
+    // the title and the facts, bottom aligned with the button; returns the top of the title
+    fn paint_words(&self, ui: &Ui, rect: Rect) -> f32 {
         let painter = ui.painter();
         let left = rect.left() + Self::INSET_LEFT;
         let title = UiText::resolve(ui.ctx(), &self.view.title);
@@ -135,6 +142,7 @@ impl<'a> HeroCard<'a> {
         let facts_top = rect.bottom() - Self::INSET_BOTTOM - TypeSize::Note.line_height();
         let title_top = facts_top - Self::TITLE_GAP - title.size().y;
         painter.galley(pos2(left, title_top), title, ink);
+        let words_top = title_top;
         let dim = <color::TextDim as ColorToken>::VALUE;
         let mut x = left + Self::META_INDENT;
         let last = self.view.meta.len().saturating_sub(1);
@@ -151,12 +159,31 @@ impl<'a> HeroCard<'a> {
                 x += MetaSeparator::SIDE + Self::SEPARATOR_GAP;
             }
         }
+        words_top
+    }
+
+    // the problem's title and reason, centred in the picture above the replay's own title
+    fn paint_problem(ui: &Ui, rect: Rect, words_top: f32, problem: &HeroProblem) {
+        let painter = ui.painter();
+        let ink = <color::OnPicture as ColorToken>::VALUE;
+        let dim = <color::TextDim as ColorToken>::VALUE;
+        let width = rect.width() * Self::PROBLEM_WIDTH;
+        let title = UiText::resolve(ui.ctx(), &problem.title);
+        let title = Draw::galley_centred(painter, &title, Self::PROBLEM_TITLE, ink, width);
+        let reason = UiText::resolve(ui.ctx(), &problem.reason);
+        let reason = Draw::galley_centred(painter, &reason, Self::PROBLEM_REASON, dim, width);
+        let height = title.size().y + Self::PROBLEM_GAP + reason.size().y;
+        let top = rect.top() + (words_top - rect.top() - height) / 2.0;
+        let centre = rect.center().x;
+        let reason_top = top + title.size().y + Self::PROBLEM_GAP;
+        painter.galley(pos2(centre, top), title, ink);
+        painter.galley(pos2(centre, reason_top), reason, dim);
     }
 
     // the button; a broken card keeps `BROKEN_BUTTON` of its fill and words
     fn paint_button(&self, ui: &Ui, rect: Rect, state: InteractionState) {
         let painter = ui.painter();
-        let broken = self.view.broken;
+        let broken = self.view.problem.is_some();
         let keep = |colour: Color32| if broken { colour.gamma_multiply(Self::BROKEN_BUTTON) } else { colour };
         if state == InteractionState::Focused {
             FocusRing::paint(painter, rect, Corner::Control.radius(rect));

@@ -154,3 +154,17 @@ fn two_fields_keep_separate_text() {
     harness.run();
     assert_eq!(harness.state().value, ("one".to_owned(), String::new()));
 }
+
+#[test]
+fn single_line_text_is_vertically_centred() {
+    let mut harness = ClickProbe::harness_with("Arrival".to_owned(), |ui, value| {
+        TextField::new(egui::Id::unique(1), value, TextFieldKind::Plain, Sample::text("Scene name")).show(ui, 280.0)
+    });
+    harness.run();
+    let field = harness.state().rect;
+    let text = ClickProbe::text_rect(&harness, "Arrival").unwrap_or_else(|| panic!("no text"));
+    assert!(
+        (text.center().y - field.center().y).abs() <= 1.0,
+        "the text {text:?} is not centred in the field {field:?}"
+    );
+}

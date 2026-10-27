@@ -56,3 +56,29 @@ msgstr ""
 
 msgid "Cancel"
 msgstr ""
+
+#. The grid placer's tray heading, in upper case; {count} is the number of pieces not on the grid
+#, python-brace-format
+msgid "NOT PLACED · {count}"
+msgstr ""
+
+#. The label of one grid placer cell; {number} counts the cells from 1, row by row
+#, python-brace-format
+msgid "Cell {number}"
+msgstr ""
+
+#. On an empty grid cell while a piece is dragged over it
+msgid "Drop here"
+msgstr ""
+
+#. On the grid cell the keyboard reached while a piece is held
+msgid "Place here"
+msgstr ""
+
+#. On a filled grid cell while another piece is dragged over it; the cell refuses the drop
+msgid "Taken"
+msgstr ""
+
+#. The tooltip of the button that takes a piece off a grid cell
+msgid "Back to the tray"
+msgstr ""

@@ -5,7 +5,7 @@ use levi_ui::font::FontFace;
 use levi_ui::text::UiText;
 use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
 
-use super::{StudioMode, TopBarAction};
+use super::{StudioMode, TopBarAction, TopBarControl};
 use crate::message::StudioUiMessage;
 use crate::tokens::color as studio;
 
@@ -20,7 +20,13 @@ impl ModeSwitch {
     const DOT: f32 = 6.0;
 
     /// Paints the switch in `rect` for `mode` and pushes `SetMode` when the other half is clicked.
-    pub(crate) fn show(ui: &mut Ui, rect: Rect, mode: StudioMode, actions: &mut Vec<TopBarAction>) {
+    pub(crate) fn show(
+        ui: &mut Ui,
+        rect: Rect,
+        mode: StudioMode,
+        actions: &mut Vec<TopBarAction>,
+        places: &mut Vec<(TopBarControl, Rect)>,
+    ) {
         let painter = ui.painter().clone();
         Draw::fill(&painter, rect, Corner::Control, <color::BgField as ColorToken>::VALUE);
         let border = Stroke::new(1.0, <color::Line as ColorToken>::VALUE);
@@ -36,6 +42,8 @@ impl ModeSwitch {
             ),
         ];
         for (choice, word, cell) in halves {
+            let control = if choice == StudioMode::Edit { TopBarControl::Edit } else { TopBarControl::Preview };
+            places.push((control, cell));
             let response = ui.allocate_rect(cell, Sense::click()).on_hover_cursor(CursorIcon::PointingHand);
             let chosen = choice == mode;
             if response.clicked() && !chosen {

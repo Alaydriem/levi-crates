@@ -12,5 +12,5 @@ pub use scene_switcher_list::{
     SceneSwitcherRow,
 };
 pub use status_bar::{StatusBar, StatusBarLayout, StatusBarView};
-pub use top_bar::{StudioMode, TopBar, TopBarAction, TopBarView};
-pub use transport::{Transport, TransportAction, TransportLayout, TransportView};
+pub use top_bar::{StudioMode, TopBar, TopBarAction, TopBarControl, TopBarView};
+pub use transport::{Transport, TransportAction, TransportControl, TransportLayout, TransportView};

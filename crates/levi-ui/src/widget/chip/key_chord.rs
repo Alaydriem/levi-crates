@@ -1,7 +1,7 @@
 use egui::{Context, Painter, Pos2, Rect, Response, Sense, Ui, pos2, vec2};
 use levi_i18n::text::Text;
 
-use super::{KeyCap, KeyCapSize};
+use super::{KeyCap, KeyCapLabel, KeyCapSize};
 use crate::icon::{Icon, IconSize};
 use crate::tokens::{ColorToken, SpacingToken, color, spacing};
 
@@ -58,7 +58,11 @@ impl KeyChord {
     }
 
     fn caps(&self) -> impl Iterator<Item = KeyCap> + '_ {
-        self.keys.iter().map(|key| KeyCap { text: key.clone(), size: self.size, conflict: self.conflict })
+        self.keys.iter().map(|key| KeyCap {
+            label: KeyCapLabel::Text(key.clone()),
+            size: self.size,
+            conflict: self.conflict,
+        })
     }
 
     // the ADD icon slot between two caps

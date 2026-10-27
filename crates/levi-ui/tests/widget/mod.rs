@@ -1,6 +1,8 @@
 mod avatar;
 mod banner;
 mod button;
+mod caption;
+mod carousel;
 mod checkbox;
 mod chip;
 mod colour_field;
@@ -9,6 +11,7 @@ mod corner_button;
 mod drag_field;
 mod dropdown;
 mod empty_state;
+mod grid_placer;
 mod legend_card;
 mod list_row;
 mod loading_state;

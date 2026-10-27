@@ -1,8 +1,10 @@
 mod transport_action;
+mod transport_control;
 mod transport_layout;
 mod transport_view;
 
 pub use transport_action::TransportAction;
+pub use transport_control::TransportControl;
 pub use transport_layout::TransportLayout;
 pub use transport_view::TransportView;
 
@@ -66,17 +68,23 @@ impl<'a> Transport<'a> {
     }
 
     pub fn show(&self, ui: &mut Ui) -> Vec<TransportAction> {
+        self.show_placed(ui).0
+    }
+
+    /// Like `show`, with the rect of each control, in points.
+    pub fn show_placed(&self, ui: &mut Ui) -> (Vec<TransportAction>, Vec<(TransportControl, Rect)>) {
         let height = <studio_spacing::Transport as SpacingToken>::VALUE;
         let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
         self.paint_bar(ui, rect);
         let mut actions = Vec::new();
-        let x = self.seek(ui, rect, &mut actions);
-        let x = self.time(ui, rect, x + Self::TIME_PADDING, &mut actions);
-        let x = self.toggles(ui, rect, x + Self::TOGGLE_PADDING, &mut actions);
-        self.right(ui, rect, x + Self::TOGGLE_PADDING, &mut actions);
+        let mut places = Vec::new();
+        let x = self.seek(ui, rect, &mut actions, &mut places);
+        let x = self.time(ui, rect, x + Self::TIME_PADDING, &mut actions, &mut places);
+        let x = self.toggles(ui, rect, x + Self::TOGGLE_PADDING, &mut actions, &mut places);
+        self.right(ui, rect, x + Self::TOGGLE_PADDING, &mut actions, &mut places);
         // `allocate_rect` moved the cursor to each control; the page goes on under the bar
         ui.advance_cursor_after_rect(rect);
-        actions
+        (actions, places)
     }
 
     fn paint_bar(&self, ui: &Ui, rect: Rect) {
@@ -91,7 +99,13 @@ impl<'a> Transport<'a> {
     }
 
     // the seek buttons and the play button; returns the right edge of the group
-    fn seek(&self, ui: &mut Ui, rect: Rect, actions: &mut Vec<TransportAction>) -> f32 {
+    fn seek(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        actions: &mut Vec<TransportAction>,
+        places: &mut Vec<(TransportControl, Rect)>,
+    ) -> f32 {
         let mut x = rect.left() + Self::PADDING;
         let before = [
             (Icon::Previous, StudioUiMessage::ToSceneStart, TransportAction::ToSceneStart),
@@ -105,20 +119,27 @@ impl<'a> Transport<'a> {
         ];
         for (index, (icon, word, action)) in before.into_iter().enumerate() {
             x += if index == 0 { 0.0 } else { Self::SEEK_GAP };
-            x = Self::icon(ui, rect, x, (icon, word, false, action), actions);
+            x = Self::icon(ui, rect, x, (icon, word, false, action), actions, places);
         }
         x += Self::SEEK_GAP + Self::PLAY_GAP;
         let play = Rect::from_min_size(pos2(x, rect.center().y - Self::PLAY / 2.0), vec2(Self::PLAY, Self::PLAY));
-        self.play(ui, play, actions);
+        self.play(ui, play, actions, places);
         x = play.right() + Self::PLAY_GAP;
         for (icon, word, action) in after {
             x += Self::SEEK_GAP;
-            x = Self::icon(ui, rect, x, (icon, word, false, action), actions);
+            x = Self::icon(ui, rect, x, (icon, word, false, action), actions, places);
         }
         x
     }
 
-    fn play(&self, ui: &mut Ui, rect: Rect, actions: &mut Vec<TransportAction>) {
+    fn play(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        actions: &mut Vec<TransportAction>,
+        places: &mut Vec<(TransportControl, Rect)>,
+    ) {
+        places.push((TransportControl::Play, rect));
         let word = if self.view.playing { StudioUiMessage::Pause } else { StudioUiMessage::Play };
         let response = ui.allocate_rect(rect, Sense::click()).on_hover_cursor(CursorIcon::PointingHand);
         let response = Tooltip::new(Text::message(word)).attach(response);
@@ -144,7 +165,14 @@ impl<'a> Transport<'a> {
     }
 
     // the timecode, the length and the speed pill from `x`; returns the right edge
-    fn time(&self, ui: &mut Ui, rect: Rect, x: f32, actions: &mut Vec<TransportAction>) -> f32 {
+    fn time(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        x: f32,
+        actions: &mut Vec<TransportAction>,
+        places: &mut Vec<(TransportControl, Rect)>,
+    ) -> f32 {
         let painter = ui.painter();
         let ink = <color::Text as ColorToken>::VALUE;
         let time = Draw::text(
@@ -156,6 +184,7 @@ impl<'a> Transport<'a> {
             ink,
             TextFit::Line,
         );
+        places.push((TransportControl::Timecode, time));
         let mut right = time.right();
         if let Some(duration) = &self.view.duration {
             let length =
@@ -168,6 +197,7 @@ impl<'a> Transport<'a> {
             pos2(right + Self::TIME_GAP, rect.center().y - Self::SPEED[1] / 2.0),
             vec2(Self::SPEED[0], Self::SPEED[1]),
         );
+        places.push((TransportControl::Speed, pill));
         let response = ui.allocate_rect(pill, Sense::click()).on_hover_cursor(CursorIcon::PointingHand);
         let response = Tooltip::new(Text::message(StudioUiMessage::PlaybackSpeed)).attach(response);
         if response.clicked() {
@@ -191,7 +221,14 @@ impl<'a> Transport<'a> {
     }
 
     // loop, snap and the composition guides, from `x`; returns the right edge
-    fn toggles(&self, ui: &mut Ui, rect: Rect, x: f32, actions: &mut Vec<TransportAction>) -> f32 {
+    fn toggles(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        x: f32,
+        actions: &mut Vec<TransportAction>,
+        places: &mut Vec<(TransportControl, Rect)>,
+    ) -> f32 {
         let toggles = [
             (Icon::Loop, StudioUiMessage::Loop, self.view.looping, TransportAction::ToggleLoop),
             (Icon::Snap, StudioUiMessage::Snap, self.view.snap, TransportAction::ToggleSnap),
@@ -200,14 +237,21 @@ impl<'a> Transport<'a> {
         let mut x = x;
         for (index, toggle) in toggles.into_iter().enumerate() {
             x += if index == 0 { 0.0 } else { Self::TOGGLE_GAP };
-            x = Self::icon(ui, rect, x, toggle, actions);
+            x = Self::icon(ui, rect, x, toggle, actions, places);
         }
         x
     }
 
     // Fit, Add camera key and the zoom slider, from the right edge leftwards, none left of `floor`. In a narrow
     // window the slider shrinks, then the zoom buttons and slider drop, before they reach the toggles.
-    fn right(&self, ui: &mut Ui, rect: Rect, floor: f32, actions: &mut Vec<TransportAction>) {
+    fn right(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        floor: f32,
+        actions: &mut Vec<TransportAction>,
+        places: &mut Vec<(TransportControl, Rect)>,
+    ) {
         let compact = self.layout == TransportLayout::Compact;
         let mut right = rect.right() - Self::PADDING;
         let side = IconButtonSize::Regular.side();
@@ -218,17 +262,19 @@ impl<'a> Transport<'a> {
                 right - side,
                 (Icon::Fit, StudioUiMessage::Fit, false, TransportAction::Fit),
                 actions,
+                places,
             ) - side;
         } else {
             let fit = TextButton::new(ButtonKind::Ghost, Text::message(StudioUiMessage::Fit));
             let width = fit.desired_width(ui.ctx());
             let place = Self::control(rect, right - width, width);
+            places.push((TransportControl::Fit, place));
             if Self::place(ui, place, |ui| BarControl::text(ui, &fit, true)).clicked() {
                 actions.push(TransportAction::Fit);
             }
             right = place.left();
         }
-        right = self.add_key(ui, rect, right, actions) - Self::ZOOM_AFTER[usize::from(compact)];
+        right = self.add_key(ui, rect, right, actions, places) - Self::ZOOM_AFTER[usize::from(compact)];
         // the slider's room once both zoom buttons are placed
         let room = right - side - Self::ZOOM_GAP * 2.0 - side - floor;
         if room < Self::ZOOM_MIN {
@@ -240,9 +286,11 @@ impl<'a> Transport<'a> {
             right - side,
             (Icon::ZoomIn, StudioUiMessage::ZoomIn, false, TransportAction::ZoomIn),
             actions,
+            places,
         ) - side;
         let width = Self::ZOOM[usize::from(compact)].min(room);
         let slider = Rect::from_min_size(pos2(right - Self::ZOOM_GAP - width, rect.top()), vec2(width, rect.height()));
+        places.push((TransportControl::ZoomSlider, slider));
         let mut zoom = f64::from(self.view.zoom);
         let changed = Self::place(ui, slider, |ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
@@ -255,11 +303,25 @@ impl<'a> Transport<'a> {
             actions.push(TransportAction::SetZoom(zoom as f32));
         }
         let x = slider.left() - Self::ZOOM_GAP - side;
-        Self::icon(ui, rect, x, (Icon::ZoomOut, StudioUiMessage::ZoomOut, false, TransportAction::ZoomOut), actions);
+        Self::icon(
+            ui,
+            rect,
+            x,
+            (Icon::ZoomOut, StudioUiMessage::ZoomOut, false, TransportAction::ZoomOut),
+            actions,
+            places,
+        );
     }
 
     // Add camera key, ending at `right`; returns its left edge. Off while playing.
-    fn add_key(&self, ui: &mut Ui, rect: Rect, right: f32, actions: &mut Vec<TransportAction>) -> f32 {
+    fn add_key(
+        &self,
+        ui: &mut Ui,
+        rect: Rect,
+        right: f32,
+        actions: &mut Vec<TransportAction>,
+        places: &mut Vec<(TransportControl, Rect)>,
+    ) -> f32 {
         let enabled = !self.view.playing;
         let key = KeyEased { look: KeyLook::Rest };
         let camera = <studio::TrackCamera as ColorToken>::VALUE;
@@ -291,6 +353,7 @@ impl<'a> Transport<'a> {
         } else {
             DisabledReason::message(StudioUiMessage::PauseToAddKey).tooltip().attach(response)
         };
+        places.push((TransportControl::AddCameraKey, response.rect));
         if response.clicked() && enabled {
             actions.push(TransportAction::AddCameraKey);
         }
@@ -304,14 +367,37 @@ impl<'a> Transport<'a> {
         x: f32,
         (icon, word, on, action): (Icon, StudioUiMessage, bool, TransportAction),
         actions: &mut Vec<TransportAction>,
+        places: &mut Vec<(TransportControl, Rect)>,
     ) -> f32 {
         let side = IconButtonSize::Regular.side();
         let place = Rect::from_min_size(pos2(x, rect.center().y - side / 2.0), vec2(side, side));
+        if let Some(control) = Self::control_of(action) {
+            places.push((control, place));
+        }
         let button = IconButton::new(icon).on(on).tooltip(Text::message(word));
         if Self::place(ui, place, |ui| button.show(ui)).clicked() {
             actions.push(action);
         }
         place.right()
+    }
+
+    // the control an icon button's action belongs to
+    fn control_of(action: TransportAction) -> Option<TransportControl> {
+        Some(match action {
+            TransportAction::ToSceneStart => TransportControl::ToSceneStart,
+            TransportAction::PreviousKey => TransportControl::PreviousKey,
+            TransportAction::BackFive => TransportControl::BackFive,
+            TransportAction::ForwardFive => TransportControl::ForwardFive,
+            TransportAction::NextKey => TransportControl::NextKey,
+            TransportAction::ToSceneEnd => TransportControl::ToSceneEnd,
+            TransportAction::ToggleLoop => TransportControl::Loop,
+            TransportAction::ToggleSnap => TransportControl::Snap,
+            TransportAction::ToggleGuides => TransportControl::Guides,
+            TransportAction::ZoomOut => TransportControl::ZoomOut,
+            TransportAction::ZoomIn => TransportControl::ZoomIn,
+            TransportAction::Fit => TransportControl::Fit,
+            _ => return None,
+        })
     }
 
     // a bar-height control from `left`, `width` wide

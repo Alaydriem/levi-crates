@@ -18,41 +18,87 @@ impl ListRowSheet {
     const HOST_WIDTH: f32 = 460.0;
     const HOST_PADDING: f32 = 16.0;
     const ROW_GAP: f32 = 8.0;
+    const COLUMN_GAP: f32 = 24.0;
 
     pub fn show(ui: &mut Ui, _state: &mut GalleryState) {
         SheetGrid::page(ui, "List row", |ui| {
-            Frame::new()
-                .fill(<color::BgPanel as ColorToken>::VALUE)
-                .stroke(Draw::border(<color::Line as ColorToken>::VALUE))
-                .corner_radius(Corner::Panel.radius(Rect::NOTHING))
-                .inner_margin(Draw::margin(Self::HOST_PADDING, Self::HOST_PADDING))
-                .show(ui, |ui| {
+            ui.horizontal_top(|ui| {
+                ui.spacing_mut().item_spacing.x = Self::COLUMN_GAP;
+                Self::host(ui, Self::version_chips);
+                Self::host(ui, Self::subtitles);
+            });
+        });
+    }
+
+    // the host panel, filled by `rows`
+    fn host(ui: &mut Ui, rows: fn(&mut Ui)) {
+        Frame::new()
+            .fill(<color::BgPanel as ColorToken>::VALUE)
+            .stroke(Draw::border(<color::Line as ColorToken>::VALUE))
+            .corner_radius(Corner::Panel.radius(Rect::NOTHING))
+            .inner_margin(Draw::margin(Self::HOST_PADDING, Self::HOST_PADDING))
+            .show(ui, |ui| {
+                ui.vertical(|ui| {
                     ui.set_width(Self::HOST_WIDTH - 2.0 * Self::HOST_PADDING);
                     ui.spacing_mut().item_spacing = vec2(0.0, SheetGrid::HEAD_GAP);
-                    // the toggles are painted, not shown, so these values never change
-                    let [rest, hover, selected, focus, off] = &mut [true, true, true, true, false];
-                    let row = Self::row("Minimap", &["Input", "HUD", "Overlay"], rest);
-                    Self::sample(ui, "REST", InteractionState::Rest, row);
-                    let hover = Self::row("Light Level", &["World"], hover).badge(1);
-                    Self::sample(ui, "HOVER", InteractionState::Hover, hover);
-                    let more = Chip::new(
-                        ChipKind::Display(ChipTone::Neutral),
-                        Text::format(LeviUiMessage::MoreItems, Args::new().uint("count", 3)),
-                    );
-                    let mut chips = Self::chips(&["Camera", "Input"]);
-                    chips.push(more);
-                    let selected = Self::row("Freecam", &[], selected).chips(chips).selected(true);
-                    Self::sample(ui, "SELECTED", InteractionState::Rest, selected);
-                    let claim = Chip::new(ChipKind::Display(ChipTone::Accent), Sample::text("Camera")).icon(Icon::Lock);
-                    let mut chips = vec![claim];
-                    chips.extend(Self::chips(&["Input"]));
-                    Self::sample(ui, "FOCUS", InteractionState::Focused, Self::row("DejaVu", &[], focus).chips(chips));
-                    let long = Self::row("World Edit Selection Tools and Brushes", &["World"], off)
-                        .version(Sample::text("v2.11.0"))
-                        .off(true);
-                    Self::sample(ui, "MOD OFF · LONG NAME", InteractionState::Rest, long);
+                    rows(ui);
                 });
-        });
+            });
+    }
+
+    fn version_chips(ui: &mut Ui) {
+        // the toggles are painted, not shown, so these values never change
+        let [rest, hover, selected, focus, off] = &mut [true, true, true, true, false];
+        let row = Self::row("Minimap", &["Input", "HUD", "Overlay"], rest);
+        Self::sample(ui, "REST", InteractionState::Rest, row);
+        let hover = Self::row("Light Level", &["World"], hover).badge(1);
+        Self::sample(ui, "HOVER", InteractionState::Hover, hover);
+        let more = Chip::new(
+            ChipKind::Display(ChipTone::Neutral),
+            Text::format(LeviUiMessage::MoreItems, Args::new().uint("count", 3)),
+        );
+        let mut chips = Self::chips(&["Camera", "Input"]);
+        chips.push(more);
+        let selected = Self::row("Freecam", &[], selected).chips(chips).selected(true);
+        Self::sample(ui, "SELECTED", InteractionState::Rest, selected);
+        let claim = Chip::new(ChipKind::Display(ChipTone::Accent), Sample::text("Camera")).icon(Icon::Lock);
+        let mut chips = vec![claim];
+        chips.extend(Self::chips(&["Input"]));
+        Self::sample(ui, "FOCUS", InteractionState::Focused, Self::row("DejaVu", &[], focus).chips(chips));
+        let long = Self::row("World Edit Selection Tools and Brushes", &["World"], off)
+            .version(Sample::text("v2.11.0"))
+            .off(true);
+        Self::sample(ui, "MOD OFF · LONG NAME", InteractionState::Rest, long);
+    }
+
+    // the name and subtitle rows
+    fn subtitles(ui: &mut Ui) {
+        // the toggle is painted, not shown, so this value never changes
+        let mut off = false;
+        let selected = Self::subtitled("Main hall", "32 × 18 × 24 · 4,212 blocks", None).selected(true);
+        Self::sample(ui, "SELECTED", InteractionState::Rest, selected);
+        let hover = Self::subtitled("East tower", "9 × 41 × 9 · 2,018 blocks", None);
+        Self::sample(ui, "HOVER", InteractionState::Hover, hover);
+        let plain = Self::subtitled("West wing", "48 × 22 × 30 · 9,604 blocks", None);
+        Self::sample(ui, "PLAIN", InteractionState::Rest, plain);
+        let lit = Self::subtitled("Lighthouse", "12 × 30 × 9 · 1,204 blocks", Some(&mut off)).off(true);
+        Self::sample(ui, "OFF", InteractionState::Rest, lit);
+        let long = Self::subtitled(
+            "Harbour west with crane and the long quay",
+            "128 × 64 × 128 · 1,048,576 blocks · 3 layers · assembled from many pieces",
+            None,
+        );
+        Self::sample(ui, "LONG NAME · ELLIPSIS", InteractionState::Rest, long);
+    }
+
+    // a row with its avatar, name and subtitle, and a toggle when `toggle` is given
+    fn subtitled<'a>(name: &str, subtitle: &str, toggle: Option<&'a mut bool>) -> ListRow<'a> {
+        let avatar = Avatar::new(&UserText::from_model(name.to_owned()), AvatarSize::Regular);
+        let row = ListRow::new(avatar, Sample::text(name)).subtitle(Sample::text(subtitle));
+        match toggle {
+            Some(on) => row.toggle(on),
+            None => row,
+        }
     }
 
     // a head, then the row painted in `state`

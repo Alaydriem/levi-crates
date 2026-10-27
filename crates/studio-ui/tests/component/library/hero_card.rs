@@ -1,6 +1,6 @@
 use egui::{Rect, Shape, vec2};
 use levi_ui::tokens::{ColorToken, color};
-use studio_ui::component::library::{HeroCard, HeroCardAction, HeroCardView, HeroPicture};
+use studio_ui::component::library::{HeroCard, HeroCardAction, HeroCardView, HeroPicture, HeroProblem};
 use studio_ui::tokens::color as studio_color;
 
 use crate::glyph::words;
@@ -16,7 +16,10 @@ impl HeroSample {
             title: words("Nether trip"),
             meta: vec![words("02:14:08"), words("6 players"), words("5 scenes"), words("Today, 14:02")],
             open: words("Open in editor"),
-            broken,
+            problem: broken.then(|| HeroProblem {
+                title: words("Game version not supported"),
+                reason: words("This recording was made with a game protocol this version cannot play."),
+            }),
         }
     }
 
@@ -119,4 +122,26 @@ fn the_button_sits_at_the_bottom_right_inside_the_card() {
     let button = HeroSample::open_button(&shapes);
     assert!((card.right() - button.right() - 24.0).abs() <= 1.0, "{button:?}");
     assert!((card.bottom() - button.bottom() - 24.0).abs() <= 1.0, "{button:?}");
+}
+
+#[test]
+fn a_card_without_a_picture_paints_the_placeholder_over_the_whole_card() {
+    let shapes = HeroSample::shapes(&HeroSample::view(false));
+    let placeholder = UiProbe::rects(&shapes)
+        .into_iter()
+        .find(|r| r.rect.size() == HeroSample::SIZE && r.fill_texture_id() != egui::TextureId::default());
+    assert!(placeholder.is_some(), "no placeholder picture");
+}
+
+#[test]
+fn a_broken_card_writes_the_problem_over_the_picture() {
+    let shapes = HeroSample::shapes(&HeroSample::view(true));
+    let words = UiProbe::words(&shapes);
+    assert!(words.contains(&"Game version not supported".to_string()), "{words:?}");
+    assert!(words.iter().any(|w| w.starts_with("This recording was made")), "{words:?}");
+    let title = UiProbe::text_rect(&shapes, "Game version not supported").expect("problem title");
+    let name = UiProbe::text_rect(&shapes, "Nether trip").expect("name");
+    assert!(title.bottom() <= name.top(), "problem {title:?} must sit above the name {name:?}");
+    let ready = UiProbe::words(&HeroSample::shapes(&HeroSample::view(false)));
+    assert!(!ready.contains(&"Game version not supported".to_string()));
 }

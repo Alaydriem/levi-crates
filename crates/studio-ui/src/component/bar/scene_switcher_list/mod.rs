@@ -78,6 +78,16 @@ impl<'a> SceneSwitcherList<'a> {
 
     /// Shows the list; returns what was clicked.
     pub fn show(&self, ui: &mut Ui) -> Option<SceneSwitcherListAction> {
+        self.show_placed(ui).0
+    }
+
+    /// Like `show`, with the rect of each row in points, in order: Original, the scenes, the footer actions. Each
+    /// is keyed by the action its click gives (`SelectOriginal`, `SelectScene(n)`, `Footer(n)`).
+    pub fn show_placed(
+        &self,
+        ui: &mut Ui,
+    ) -> (Option<SceneSwitcherListAction>, Vec<(SceneSwitcherListAction, Rect)>) {
+        let mut places = Vec::new();
         let width = <container::SceneMenu as ContainerToken>::VALUE;
         let (frame, allocated) = ui.allocate_exact_size(vec2(width, self.height()), Sense::hover());
         let base = allocated.id;
@@ -108,20 +118,22 @@ impl<'a> SceneSwitcherList<'a> {
         if self.original_row(ui, original, Self::id(base, 0)) {
             action = Some(SceneSwitcherListAction::SelectOriginal);
         }
+        places.push((SceneSwitcherListAction::SelectOriginal, original));
         top = original.bottom() + Self::ROW_GAP;
         for (index, scene) in self.view.scenes.iter().enumerate() {
             let row = Rect::from_min_size(pos2(inner.left(), top), vec2(inner.width(), Self::ROW));
             if let Some(found) = self.scene_row(ui, row, scene, index, Self::id(base, 1 + index)) {
                 action = Some(found);
             }
+            places.push((SceneSwitcherListAction::SelectScene(index), row));
             top = row.bottom() + Self::ROW_GAP;
         }
         // the gap after the last row is not part of the list
         let list_end = top - Self::ROW_GAP;
-        if let Some(found) = self.footer(ui, inner, list_end, base) {
+        if let Some(found) = self.footer(ui, inner, list_end, base, &mut places) {
             action = Some(found);
         }
-        action
+        (action, places)
     }
 
     fn height(&self) -> f32 {
@@ -233,7 +245,14 @@ impl<'a> SceneSwitcherList<'a> {
     }
 
     // the line, then one row per action; returns the footer action that was clicked
-    fn footer(&self, ui: &mut Ui, inner: Rect, list_end: f32, base: Id) -> Option<SceneSwitcherListAction> {
+    fn footer(
+        &self,
+        ui: &mut Ui,
+        inner: Rect,
+        list_end: f32,
+        base: Id,
+        places: &mut Vec<(SceneSwitcherListAction, Rect)>,
+    ) -> Option<SceneSwitcherListAction> {
         if self.view.footer.is_empty() {
             return None;
         }
@@ -244,6 +263,7 @@ impl<'a> SceneSwitcherList<'a> {
         let mut action = None;
         for (index, item) in self.view.footer.iter().enumerate() {
             let row = Rect::from_min_size(pos2(inner.left(), top), vec2(inner.width(), Self::ACTION));
+            places.push((SceneSwitcherListAction::Footer(index), row));
             let response = ui.interact(row, Self::id(base, 1 + self.view.scenes.len() + index), Sense::click());
             let state = InteractionState::of(&response, true);
             Draw::fill(ui.painter(), row, Corner::Control, StateStyle::Clear.fill(state));

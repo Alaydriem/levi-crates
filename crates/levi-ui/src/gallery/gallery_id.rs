@@ -11,6 +11,7 @@ pub enum GalleryId {
     ScanRadius,
     Shape,
     GridColour,
+    GridPlacer,
 }
 
 impl Hash for GalleryId {

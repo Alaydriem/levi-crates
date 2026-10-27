@@ -32,6 +32,16 @@ pub enum LeviUiId {
     DropdownHighlight,
     /// The confirm popover's area.
     ConfirmPopover,
+    /// A grid placer's piece chip, its cells, the unplace button of a filled cell and the tray drop zone.
+    GridChip,
+    GridCell,
+    GridUnplace,
+    GridTray,
+    /// The piece a grid placer holds for the keyboard route, and the cell the keyboard has reached.
+    GridHeld,
+    GridFocusCell,
+    /// The layer the dragged chip floats on.
+    GridDrag,
 }
 
 impl Hash for LeviUiId {

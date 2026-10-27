@@ -1,5 +1,7 @@
 use levi_i18n::text::Text;
 
+use super::HeroProblem;
+
 /// What the Library hero card shows.
 pub struct HeroCardView {
     pub title: Text,
@@ -7,6 +9,7 @@ pub struct HeroCardView {
     pub meta: Vec<Text>,
     /// The button's words.
     pub open: Text,
-    /// The replay cannot be opened: the picture is faint and the button is muted and does nothing.
-    pub broken: bool,
+    /// Set when the replay cannot be opened: the picture is faint, the button is muted and does nothing, and the
+    /// problem is written over the picture.
+    pub problem: Option<HeroProblem>,
 }

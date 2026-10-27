@@ -7,20 +7,21 @@ use levi_i18n::text::Text;
 use levi_ui::draw::{Draw, TextFit, TextStyle, TypeSize};
 use levi_ui::font::FontFace;
 use levi_ui::glyph::Glyph;
-use levi_ui::tokens::{ColorToken, color};
+use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
 
 use super::{TimeAxis, Timecode, TrackHeader};
 use crate::glyph::CheckpointTick;
 use crate::tokens::color as studio;
 
 /// Paper: `Ruler` (`5Y5-0`) and the ruler row of `54P-0`. The header cell with the track list's title, then the
-/// time ticks, a label on each major tick, and the checkpoints. The tick step is the smallest one whose labels do
-/// not overlap.
+/// time ticks, a label on each major tick, the checkpoints, and a band for the recorded parts. The tick step is the
+/// smallest one whose labels do not overlap.
 pub struct Ruler<'a> {
     axis: &'a TimeAxis,
     length: f64,
     title: Option<&'a Text>,
     checkpoints: &'a [f64],
+    recorded: &'a [(f64, f64)],
 }
 
 impl<'a> Ruler<'a> {
@@ -47,7 +48,7 @@ impl<'a> Ruler<'a> {
     const LABEL: TextStyle = TextStyle::new(TypeSize::Caption, FontFace::Regular);
 
     pub fn new(axis: &'a TimeAxis, length: f64) -> Self {
-        Self { axis, length, title: None, checkpoints: &[] }
+        Self { axis, length, title: None, checkpoints: &[], recorded: &[] }
     }
 
     /// The header cell's title, as in "Tracks · Arrival".
@@ -58,6 +59,12 @@ impl<'a> Ruler<'a> {
 
     pub fn checkpoints(mut self, checkpoints: &'a [f64]) -> Self {
         self.checkpoints = checkpoints;
+        self
+    }
+
+    /// The parts of the replay the user recorded, as `(start, end)` seconds. Painted as a band behind everything else.
+    pub fn recorded(mut self, ranges: &'a [(f64, f64)]) -> Self {
+        self.recorded = ranges;
         self
     }
 
@@ -94,6 +101,7 @@ impl<'a> Ruler<'a> {
         Draw::divider(painter, area.x_range(), area.bottom() - 1.0, <color::Line as ColorToken>::VALUE);
         let painter = painter.with_clip_rect(area.intersect(painter.clip_rect()));
         let step = self.step(painter.ctx());
+        self.band(&painter, area);
         self.ticks(&painter, area, step);
         for &seconds in self.checkpoints {
             let x = self.axis.x_of(seconds);
@@ -117,6 +125,22 @@ impl<'a> Ruler<'a> {
                 (step / self.axis.seconds_per_point) as f32 >= label + Self::LABEL_OFFSET + Self::LABEL_GAP
             })
             .unwrap_or(Self::STEPS[Self::STEPS.len() - 1])
+    }
+
+    /// Paper `Recorded segment`: an accent-soft fill over the ruler's height, and an accent edge along its bottom.
+    fn band(&self, painter: &Painter, area: Rect) {
+        let fill = <color::AccentSoft as ColorToken>::VALUE;
+        let edge = <color::Accent as ColorToken>::VALUE;
+        let height = <spacing::Indicator as SpacingToken>::VALUE;
+        for &(start, end) in self.recorded {
+            let span =
+                Rect::from_x_y_ranges(self.axis.x_of(start)..=self.axis.x_of(end), area.y_range()).intersect(area);
+            if span.width() <= 0.0 {
+                continue;
+            }
+            painter.rect_filled(span, 0, fill);
+            painter.rect_filled(Rect::from_min_max(pos2(span.left(), span.bottom() - height), span.max), 0, edge);
+        }
     }
 
     fn ticks(&self, painter: &Painter, area: Rect, step: f64) {

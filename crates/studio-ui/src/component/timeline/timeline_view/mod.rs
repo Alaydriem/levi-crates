@@ -69,7 +69,10 @@ impl<'a> TimelineView<'a> {
         let layout = TimelineLayout::new(rect, self.model);
         let axis = layout.axis(self.model);
         let mut actions = Vec::new();
-        let ruler = Ruler::new(&axis, self.model.length).title(&self.model.title).checkpoints(&self.model.checkpoints);
+        let ruler = Ruler::new(&axis, self.model.length)
+            .title(&self.model.title)
+            .checkpoints(&self.model.checkpoints)
+            .recorded(&self.model.recorded);
         match ruler.show_at(ui, layout.ruler) {
             Some(RulerAction::Seek(seconds)) => actions.push(TimelineAction::Seek(seconds)),
             Some(RulerAction::OpenMenu(seconds, at)) => {

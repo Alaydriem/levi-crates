@@ -10,7 +10,10 @@ pub use menu_tone::MenuTone;
 pub use menu_trailing::MenuTrailing;
 pub use submenu::Submenu;
 
-use egui::{Frame, Painter, Popup, PopupCloseBehavior, Rect, Response, Sense, Ui, Vec2, pos2, vec2};
+use egui::{
+    Align, Frame, Id, Layout, Painter, Popup, PopupAnchor, PopupCloseBehavior, PopupKind, Pos2, Rect, RectAlign,
+    Response, Sense, Ui, Vec2, pos2, vec2,
+};
 use levi_i18n::text::Text;
 
 use crate::draw::{Corner, Draw, TextFit, TextStyle, TypeSize};
@@ -40,6 +43,39 @@ impl Menu {
             }
             add(ui);
         });
+    }
+
+    /// Paper: Widgets, `Widget / Menu item`, "Open menu". A menu that a click on `button` toggles, below the button's
+    /// left edge. A click outside closes it. Returns whether it is open after this frame, so the caller can draw
+    /// `button` pressed.
+    pub fn show_from_button(button: &Response, add: impl FnOnce(&mut Ui)) -> bool {
+        Popup::from_toggle_button_response(button)
+            .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+            .frame(Self::frame())
+            .gap(<spacing::Xs as SpacingToken>::VALUE)
+            .width(Self::inner_width())
+            .align(RectAlign::BOTTOM_START)
+            .show(|ui| {
+                ui.set_width(Self::inner_width());
+                add(ui);
+            });
+        Popup::is_id_open(&button.ctx, Popup::default_response_id(button))
+    }
+
+    /// Paper: Widgets, `Widget / Menu item`, "Open menu". A menu with its top left corner at `at`, in the popup `popup`.
+    /// The caller opens it with `Popup::open_id` and closes it with `Popup::close_id`. A click outside closes it.
+    /// Returns whether it is open.
+    pub fn show_at(ui: &Ui, popup: Id, at: Pos2, add: impl FnOnce(&mut Ui)) -> bool {
+        Popup::new(popup, ui.ctx().clone(), PopupAnchor::Position(at), ui.layer_id())
+            .kind(PopupKind::Menu)
+            .layout(Layout::top_down_justified(Align::Min))
+            .close_behavior(PopupCloseBehavior::CloseOnClickOutside)
+            .gap(0.0)
+            .frame(Self::frame())
+            .width(Self::inner_width())
+            .open_memory(None)
+            .show(add)
+            .is_some()
     }
 
     /// A separator row: `--spacing-s` high with a 1 px `--color-line` across.

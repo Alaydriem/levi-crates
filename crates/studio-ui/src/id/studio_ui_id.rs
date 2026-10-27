@@ -40,6 +40,8 @@ pub enum StudioUiId {
     SceneSwitcherList,
     /// The source list's remove buttons and its add button.
     SourceList,
+    /// The placeholder picture's texture, kept in the context's temporary data.
+    ReplayPlaceholder,
 }
 
 impl Hash for StudioUiId {

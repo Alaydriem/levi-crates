@@ -16,16 +16,30 @@ pub struct TimelineRowsPage;
 impl TimelineRowsPage {
     // Paper `6IW-0` zoomed out: the 134 s replay across the 1268 px lanes, about 0.1 s a point
     const ZOOMED_OUT: f64 = 0.1;
+    // Paper `5Y5-0`, state "Recorded segment"
+    const RECORDED: [(f64, f64); 1] = [(29.47, 37.0)];
 
     pub fn ruler(ui: &mut Ui, _state: &mut GalleryState) {
         BarRows::page(ui, |ui| {
-            for (caption, playing) in [("PAUSED", false), ("PLAYING · SCENE CAMERA DRIVES, BOOKMARK HOVERED", true)] {
+            let states = [
+                ("PAUSED", false, &[][..]),
+                ("PLAYING · SCENE CAMERA DRIVES, BOOKMARK HOVERED", true, &[][..]),
+                ("RECORDED SEGMENT · 00:29.47 – 00:37.00", false, &Self::RECORDED[..]),
+            ];
+            for (caption, playing, recorded) in states {
                 ViewerSamples::row(ui, caption, |ui| {
                     TimelineSamples::place(ui, Ruler::HEIGHT, |ui, rect| {
                         let axis = TimelineSamples::axis(rect.left());
                         let title = TimelineSamples::words("Tracks · Arrival");
-                        Ruler::new(&axis, 134.0).title(&title).checkpoints(&[30.0, 35.0, 40.0]).show_at(ui, rect);
-                        Self::marks(ui, rect, &axis, playing);
+                        Ruler::new(&axis, 134.0)
+                            .title(&title)
+                            .checkpoints(&[30.0, 35.0, 40.0])
+                            .recorded(recorded)
+                            .show_at(ui, rect);
+                        // Paper: the recorded segment's state has the playhead at the segment's start
+                        let start = recorded.first().map(|&(start, _)| (start, format!("{start:.2}")));
+                        let playhead = start.as_ref().map(|(start, label)| (*start, label.as_str()));
+                        Self::marks(ui, rect, &axis, playing, playhead);
                     });
                 });
             }
@@ -33,14 +47,16 @@ impl TimelineRowsPage {
     }
 
     // the bookmark and the playhead on a ruler
-    fn marks(ui: &Ui, rect: Rect, axis: &TimeAxis, playing: bool) {
+    fn marks(ui: &Ui, rect: Rect, axis: &TimeAxis, playing: bool, playhead: Option<(f64, &str)>) {
         let top = rect.top() + 4.0;
         let x = axis.x_of(TimelineSamples::START + 741.0 / 101.0);
         let flag = Rect::from_min_max(pos2(x, top), pos2(x + BookmarkFlag::WIDTH, rect.bottom()));
         let flag_hue =
             if playing { <color::OnAccent as ColorToken>::VALUE } else { <studio::Marker as ColorToken>::VALUE };
         BookmarkFlag { label: TimelineSamples::words("portal") }.paint(ui.painter(), flag, flag_hue);
-        let (seconds, label, hue) = if playing {
+        let (seconds, label, hue) = if let Some((seconds, label)) = playhead {
+            (seconds, label, <color::Playhead as ColorToken>::VALUE)
+        } else if playing {
             (31.12, "31.12", <studio::SceneCamera as ColorToken>::VALUE)
         } else {
             (32.95, "32.95", <color::Playhead as ColorToken>::VALUE)

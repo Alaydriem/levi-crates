@@ -1,6 +1,6 @@
 use levi_ui::icon::{Icon, IconShape};
 use levi_ui::tokens::SpacingToken;
-use studio_ui::component::bar::{Transport, TransportAction, TransportLayout, TransportView};
+use studio_ui::component::bar::{Transport, TransportAction, TransportControl, TransportLayout, TransportView};
 use studio_ui::tokens::spacing;
 
 use crate::glyph::words;
@@ -114,4 +114,100 @@ fn narrow_compact_transport_keeps_its_groups_apart() {
         }
         assert_eq!(probe.click(guides.center(), show), vec![TransportAction::ToggleGuides], "at {width}");
     }
+}
+
+fn placed(width: f32, layout: TransportLayout) -> (egui::Rect, Vec<(TransportControl, egui::Rect)>) {
+    let mut probe = UiProbe::new(width);
+    let view = view(false);
+    let show = |ui: &mut egui::Ui| {
+        let (_, places) = Transport::new(&view).layout(layout).show_placed(ui);
+        (ui.min_rect(), places)
+    };
+    probe.frame(Vec::new(), show);
+    probe.frame(Vec::new(), show).0
+}
+
+fn action_of(control: TransportControl) -> Option<TransportAction> {
+    Some(match control {
+        TransportControl::ToSceneStart => TransportAction::ToSceneStart,
+        TransportControl::PreviousKey => TransportAction::PreviousKey,
+        TransportControl::BackFive => TransportAction::BackFive,
+        TransportControl::Play => TransportAction::TogglePlay,
+        TransportControl::ForwardFive => TransportAction::ForwardFive,
+        TransportControl::NextKey => TransportAction::NextKey,
+        TransportControl::ToSceneEnd => TransportAction::ToSceneEnd,
+        TransportControl::Speed => TransportAction::CycleSpeed,
+        TransportControl::Loop => TransportAction::ToggleLoop,
+        TransportControl::Snap => TransportAction::ToggleSnap,
+        TransportControl::Guides => TransportAction::ToggleGuides,
+        TransportControl::ZoomOut => TransportAction::ZoomOut,
+        TransportControl::ZoomIn => TransportAction::ZoomIn,
+        TransportControl::AddCameraKey => TransportAction::AddCameraKey,
+        TransportControl::Fit => TransportAction::Fit,
+        TransportControl::Timecode | TransportControl::ZoomSlider => return None,
+    })
+}
+
+const ALL_CONTROLS: [TransportControl; 17] = [
+    TransportControl::ToSceneStart,
+    TransportControl::PreviousKey,
+    TransportControl::BackFive,
+    TransportControl::Play,
+    TransportControl::ForwardFive,
+    TransportControl::NextKey,
+    TransportControl::ToSceneEnd,
+    TransportControl::Timecode,
+    TransportControl::Speed,
+    TransportControl::Loop,
+    TransportControl::Snap,
+    TransportControl::Guides,
+    TransportControl::ZoomOut,
+    TransportControl::ZoomSlider,
+    TransportControl::ZoomIn,
+    TransportControl::AddCameraKey,
+    TransportControl::Fit,
+];
+
+#[test]
+fn full_transport_places_all_17_controls_inside_the_bar() {
+    let (bar, places) = placed(1920.0, TransportLayout::Full);
+    assert_eq!(places.len(), 17, "{places:?}");
+    for control in ALL_CONTROLS {
+        let rect = places.iter().find(|(c, _)| *c == control).unwrap_or_else(|| panic!("no {control:?}")).1;
+        assert!(bar.contains_rect(rect), "{control:?} {rect:?} outside {bar:?}");
+    }
+}
+
+#[test]
+fn a_click_at_the_centre_of_each_placed_control_gives_its_action() {
+    let (_, places) = placed(1920.0, TransportLayout::Full);
+    for (control, rect) in places {
+        let Some(expected) = action_of(control) else { continue };
+        let mut probe = UiProbe::new(1920.0);
+        let view = view(false);
+        let show = |ui: &mut egui::Ui| Transport::new(&view).show(ui);
+        probe.shapes(show);
+        assert_eq!(probe.click(rect.center(), show), vec![expected], "{control:?}");
+    }
+}
+
+#[test]
+fn compact_transport_with_no_room_omits_the_zoom_controls() {
+    let (_, places) = placed(560.0, TransportLayout::Compact);
+    for control in [TransportControl::ZoomOut, TransportControl::ZoomSlider, TransportControl::ZoomIn] {
+        assert!(places.iter().all(|(c, _)| *c != control), "{control:?} listed: {places:?}");
+    }
+    for control in [TransportControl::Play, TransportControl::Speed, TransportControl::Fit] {
+        assert!(places.iter().any(|(c, _)| *c == control), "{control:?} missing");
+    }
+}
+
+#[test]
+fn show_and_show_placed_give_the_same_actions() {
+    let mut probe = UiProbe::new(1920.0);
+    let view = view(false);
+    let shapes = probe.shapes(|ui| Transport::new(&view).show(ui));
+    let at = UiProbe::text_rect(&shapes, &glyph(Icon::Play)).unwrap().center();
+    let placed = probe.click(at, |ui| Transport::new(&view).show_placed(ui).0);
+    assert_eq!(placed, vec![TransportAction::TogglePlay]);
 }

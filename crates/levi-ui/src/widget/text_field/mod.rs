@@ -200,7 +200,9 @@ impl<'a> TextField<'a> {
         if self.swatch.is_some() {
             left += Self::SWATCH + Self::SWATCH_GAP;
         }
-        Rect::from_min_max(pos2(left, rect.top()), pos2(right.max(left), rect.bottom()))
+        let row = self.style().size.line_height();
+        let top = rect.center().y - row / 2.0;
+        Rect::from_min_max(pos2(left, top), pos2(right.max(left), top + row))
     }
 
     // the clear button slot, kept empty when there is no text so the width does not jump

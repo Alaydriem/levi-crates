@@ -65,10 +65,24 @@ pub enum Icon {
     SkipBack,
     SkipForward,
     Clear,
+    /// The grip on a grid placer's piece chip (Paper: Widgets, `Widget / Grid placer`).
+    Grip,
+    /// The unplace button on a filled grid placer cell (Paper: Widgets, `Widget / Grid placer`).
+    Cancel,
+    /// The Layer control of the HUD carousel (Paper: Stratum, `Stratum · 15 HUD · full controls`).
+    Layers,
+    /// The Rotate control of the HUD carousel (Paper: Stratum, `Stratum · 15 HUD · full controls`).
+    Rotate,
+    /// The Opacity control of the HUD carousel (Paper: Stratum, `Stratum · 15 HUD · full controls`).
+    Brightness,
+    /// The Show control of the HUD carousel (Paper: Stratum, `Stratum · 15 HUD · full controls`).
+    View,
+    /// The left arrow key cap of the HUD (Paper: Stratum, `Stratum · 16 HUD · quick mode`).
+    ChevronLeft,
 }
 
 impl Icon {
-    pub const ALL: [Icon; 52] = [
+    pub const ALL: [Icon; 59] = [
         Self::Add,
         Self::Copy,
         Self::Hide,
@@ -121,6 +135,13 @@ impl Icon {
         Self::SkipBack,
         Self::SkipForward,
         Self::Clear,
+        Self::Grip,
+        Self::Cancel,
+        Self::Layers,
+        Self::Rotate,
+        Self::Brightness,
+        Self::View,
+        Self::ChevronLeft,
     ];
 
     pub fn shape(self) -> IconShape {
@@ -177,6 +198,13 @@ impl Icon {
             Self::SkipBack => '\u{E100}',
             Self::SkipForward => '\u{E101}',
             Self::Clear => '\u{E894}',
+            Self::Grip => '\u{E76F}',
+            Self::Cancel => '\u{E711}',
+            Self::Layers => '\u{E81E}',
+            Self::Rotate => '\u{E7AD}',
+            Self::Brightness => '\u{E793}',
+            Self::View => '\u{E890}',
+            Self::ChevronLeft => '\u{E76B}',
         };
         IconShape::Font(code)
     }

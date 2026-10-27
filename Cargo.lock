@@ -2584,6 +2584,7 @@ dependencies = [
  "levi-i18n-tool",
  "levi-rules",
  "levi-ui",
+ "png",
  "studio-ui",
 ]
 

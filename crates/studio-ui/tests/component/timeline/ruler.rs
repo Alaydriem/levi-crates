@@ -1,4 +1,5 @@
-use studio_ui::component::timeline::{Ruler, TimeAxis, TrackHeader};
+use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
+use studio_ui::component::timeline::{Ruler, RulerAction, TimeAxis, TrackHeader};
 
 use crate::glyph::words;
 use crate::support::UiProbe;
@@ -36,4 +37,56 @@ fn ruler_labels_never_overlap() {
             }
         }
     }
+}
+
+// a 1490 wide ruler at 100 px a second whose recorded ranges are `ranges`; returns the painted shapes
+fn recorded_shapes(ranges: &[(f64, f64)]) -> Vec<egui::Shape> {
+    let axis = TimeAxis { start: 0.0, seconds_per_point: 0.01, left: TrackHeader::WIDTH };
+    UiProbe::new(1490.0).shapes(|ui| Ruler::new(&axis, 10.0).recorded(ranges).show(ui))
+}
+
+#[test]
+fn recorded_segments_are_painted_behind_the_ticks() {
+    let shapes = recorded_shapes(&[(2.0, 4.0)]);
+    let soft = <color::AccentSoft as ColorToken>::VALUE;
+    let edge = <color::Accent as ColorToken>::VALUE;
+    let left = TrackHeader::WIDTH + 200.0;
+    let right = TrackHeader::WIDTH + 400.0;
+    let rects = UiProbe::rects(&shapes);
+    let fill = rects.iter().find(|r| r.fill == soft).expect("no accent-soft fill");
+    assert_eq!((fill.rect.left(), fill.rect.right()), (left, right));
+    assert_eq!(fill.rect.height(), Ruler::HEIGHT);
+    let bar = rects.iter().find(|r| r.fill == edge).expect("no accent edge");
+    assert_eq!((bar.rect.left(), bar.rect.right()), (left, right));
+    assert_eq!(bar.rect.height(), <spacing::Indicator as SpacingToken>::VALUE);
+    assert_eq!(bar.rect.bottom(), Ruler::HEIGHT);
+    let order =
+        |wanted: egui::Color32| shapes.iter().position(|s| matches!(s, egui::Shape::Rect(r) if r.fill == wanted));
+    // a tick is a vertical line inside the time area (the dividers are horizontal, or on the header's edge)
+    let first_tick = shapes
+        .iter()
+        .position(|s| {
+            matches!(s, egui::Shape::LineSegment { points, .. }
+                if points[0].x == points[1].x && points[0].x > TrackHeader::WIDTH)
+        })
+        .expect("no ticks");
+    assert!(order(soft).expect("fill") < first_tick);
+    assert!(order(edge).expect("edge") < first_tick);
+}
+
+#[test]
+fn a_range_outside_the_view_paints_nothing() {
+    let shapes = recorded_shapes(&[(20.0, 30.0)]);
+    let rects = UiProbe::rects(&shapes);
+    assert!(rects.iter().all(|r| r.fill != <color::AccentSoft as ColorToken>::VALUE));
+    assert!(rects.iter().all(|r| r.fill != <color::Accent as ColorToken>::VALUE));
+}
+
+#[test]
+fn a_click_on_the_band_still_seeks() {
+    let axis = TimeAxis { start: 0.0, seconds_per_point: 0.01, left: TrackHeader::WIDTH };
+    let ranges = [(2.0, 4.0)];
+    let at = egui::pos2(TrackHeader::WIDTH + 300.0, 20.0);
+    let action = UiProbe::new(1490.0).click(at, |ui| Ruler::new(&axis, 10.0).recorded(&ranges).show(ui));
+    assert!(matches!(action, Some(RulerAction::Seek(s)) if (s - 3.0).abs() < 1e-6), "{action:?}");
 }

@@ -88,21 +88,36 @@ impl<'a> SettingRow<'a> {
             return self.show_grown(ui);
         }
         let enabled = self.disabled.is_none();
+        // an `Other` control's width is known only after it is shown: use the last frame's
+        let width_id = ui.next_auto_id().with("control width");
+        let control_width = self.control_size(ui, width_id).x;
         let size = vec2(ui.available_width(), <spacing::Field as SpacingToken>::VALUE);
         let (rect, mut response) = ui.allocate_exact_size(size, self.sense());
         let state = InteractionState::of(&response, enabled);
         let painter = state.painter(ui.painter());
         let Self { label, control, disabled, .. } = self;
-        Self::paint_row(&painter, rect, state, &label);
+        Self::paint_row(&painter, rect, state, &label, control_width);
         let area = rect.shrink2(vec2(<spacing::S as SpacingToken>::VALUE, 0.0));
-        Self::run_control(ui, control, &mut response, (&painter, state), area, enabled);
+        let used = Self::run_control(ui, control, &mut response, (&painter, state), area, enabled);
+        if let Some(used) = used {
+            let last = ui.ctx().data(|data| data.get_temp::<f32>(width_id));
+            if last.is_none_or(|last| (last - used).abs() > 0.5) {
+                ui.ctx().data_mut(|data| data.insert_temp(width_id, used));
+                ui.ctx().request_discard("a setting row's control changed width");
+            }
+        }
         Self::finish(response, disabled.as_ref())
     }
 
     /// Paints the row in `state`, for the gallery. An `Other` control is not painted: it needs a `Ui`.
     pub fn paint(&self, painter: &Painter, rect: Rect, state: InteractionState) {
         let painter = state.painter(painter);
-        Self::paint_row(&painter, rect, state, &self.label);
+        let control_width = match &self.control {
+            SettingControl::Toggle(_) => Toggle::TRACK.x,
+            SettingControl::Checkbox(_) => <spacing::L as SpacingToken>::VALUE,
+            SettingControl::Other(_) => 0.0,
+        };
+        Self::paint_row(&painter, rect, state, &self.label, control_width);
         let area = rect.shrink2(vec2(<spacing::S as SpacingToken>::VALUE, 0.0));
         match &self.control {
             SettingControl::Toggle(on) => {
@@ -261,7 +276,8 @@ impl<'a> SettingRow<'a> {
     }
 
     // the row itself, on a painter that already carries the disabled opacity
-    fn paint_row(painter: &Painter, rect: Rect, state: InteractionState, label: &Text) {
+    // the label may use the row less its padding, the control and the gap to the control
+    fn paint_row(painter: &Painter, rect: Rect, state: InteractionState, label: &Text, control_width: f32) {
         if state == InteractionState::Focused {
             FocusRing::paint(painter, rect, Corner::Control.radius(rect));
         }
@@ -270,7 +286,9 @@ impl<'a> SettingRow<'a> {
         let style = TextStyle::new(TypeSize::Label, FontFace::Regular);
         let color = <color::Text as ColorToken>::VALUE;
         let padding = <spacing::S as SpacingToken>::VALUE;
-        let galley = Draw::galley(painter, &text, style, color, TextFit::Truncate(rect.width() / 2.0));
+        let gap = if control_width > 0.0 { <spacing::L as SpacingToken>::VALUE } else { 0.0 };
+        let room = (rect.width() - 2.0 * padding - control_width - gap).max(0.0);
+        let galley = Draw::galley(painter, &text, style, color, TextFit::Truncate(room));
         painter.galley(pos2(rect.left() + padding, rect.center().y - galley.size().y / 2.0), galley, color);
     }
 

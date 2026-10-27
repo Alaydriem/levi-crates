@@ -43,6 +43,7 @@ impl TimelineSamples {
             seconds_per_point: Self::SECONDS_PER_POINT,
             length: 134.0,
             checkpoints: vec![30.0, 35.0, 40.0],
+            recorded: Vec::new(),
             scenes: Self::scenes(0, None),
             realms: vec![RealmSegment {
                 start: 0.0,

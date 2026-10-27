@@ -39,6 +39,7 @@ pub fn model(tracks: usize) -> TimelineViewModel {
         seconds_per_point: 0.01,
         length: 10.0,
         checkpoints: vec![5.0],
+        recorded: Vec::new(),
         scenes: Vec::new(),
         realms: Vec::new(),
         tracks: (0..tracks).map(|index| track(&format!("Track {index}"), 6, false)).collect(),

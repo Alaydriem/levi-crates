@@ -5,7 +5,7 @@ use levi_ui::LeviUiMessage;
 use levi_ui::font::FontSource;
 use levi_ui::theme::Theme;
 use levi_ui::tokens::{ColorToken, SpacingToken, color, spacing};
-use levi_ui::widget::{TableColumn, TableHeader, TableRow, TableRowKind};
+use levi_ui::widget::{TableAlign, TableColumn, TableHeader, TableRow, TableRowKind, TableRowSize};
 
 use crate::support::{PaintCapture, Sample};
 
@@ -208,4 +208,83 @@ fn disabled_row_turns_off_its_cell_widgets() {
     harness.run();
     TableProbe::click(&mut harness);
     assert_eq!(harness.state().clicks, 0, "a button in a disabled row took a click");
+}
+
+// a header and one row over two columns, with `aligns` and `size`; the log has the row and its cells
+struct NumericProbe;
+
+impl NumericProbe {
+    const COLUMNS: [TableColumn; 2] = [TableColumn { width_fraction: 0.5 }, TableColumn { width_fraction: 0.5 }];
+
+    fn harness(aligns: Option<[TableAlign; 2]>, size: TableRowSize) -> Harness<'static, TableLog> {
+        let mut harness = Harness::builder()
+            .with_size(vec2(980.0, 300.0))
+            .allow_missing_glyphs()
+            .with_context_setup(|ctx| Theme::install(ctx, FontSource::BuiltIn))
+            .build_ui_state(
+                move |ui, log: &mut TableLog| {
+                    let heads = [Sample::text("ITEM"), Sample::text("COUNT")];
+                    let mut header = TableHeader::new(heads.into_iter().zip(Self::COLUMNS).collect());
+                    let mut row = TableRow::new(&Self::COLUMNS, TableRowKind::Plain).size(size);
+                    let aligns: &[TableAlign] = aligns.as_ref().map_or(&[], |aligns| aligns.as_slice());
+                    header = header.aligns(aligns);
+                    row = row.aligns(aligns);
+                    header.show(ui);
+                    log.cells.clear();
+                    let response = row.show(ui, |index, ui| {
+                        log.cells.push(ui.max_rect());
+                        ui.label(["Stone Bricks", "3,412"][index]);
+                    });
+                    log.row = response.rect;
+                },
+                TableLog { calls: Vec::new(), cells: Vec::new(), row: Rect::NOTHING, clicks: 0 },
+            );
+        harness.run();
+        harness
+    }
+}
+
+#[test]
+fn compact_row_is_38_high() {
+    let harness = NumericProbe::harness(None, TableRowSize::Compact);
+    assert_eq!(harness.state().row.height(), 38.0);
+}
+
+#[test]
+fn default_row_is_unchanged() {
+    let harness = NumericProbe::harness(None, TableRowSize::default());
+    assert_eq!(harness.state().row.height(), 68.0);
+    let plain = TableProbe::harness(|| TableRowKind::Plain);
+    assert_eq!(plain.state().row.height(), 68.0);
+}
+
+#[test]
+fn end_aligned_header_is_right_aligned() {
+    let harness = NumericProbe::harness(Some([TableAlign::Start, TableAlign::End]), TableRowSize::Compact);
+    let shapes = TableProbe::shapes(&harness);
+    let log = harness.state();
+    let Some((head, _)) = TableProbe::text(&shapes, "COUNT") else { panic!("no head") };
+    let column = log.cells[1];
+    assert!(
+        (head.right() - column.right()).abs() <= 1.0,
+        "head ends at {}, column at {}",
+        head.right(),
+        column.right()
+    );
+    let Some((cell, _)) = TableProbe::text(&shapes, "3,412") else { panic!("no cell text") };
+    assert!(
+        (cell.right() - column.right()).abs() <= 1.0,
+        "cell ends at {}, column at {}",
+        cell.right(),
+        column.right()
+    );
+}
+
+#[test]
+fn start_alignment_is_the_default() {
+    let harness = NumericProbe::harness(None, TableRowSize::Compact);
+    let shapes = TableProbe::shapes(&harness);
+    let column = harness.state().cells[1];
+    let Some((head, _)) = TableProbe::text(&shapes, "COUNT") else { panic!("no head") };
+    assert!((head.left() - column.left()).abs() <= 1.0, "head starts at {}, column at {}", head.left(), column.left());
 }

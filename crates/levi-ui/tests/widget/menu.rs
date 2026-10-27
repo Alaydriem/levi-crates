@@ -1,10 +1,12 @@
-use egui::{Color32, Rect, Sense, Shape, pos2, vec2};
+use egui::epaint::RectShape;
+use egui::{Color32, Id, Popup, Rect, Sense, Shape, pos2, vec2};
+use egui_kittest::Harness;
 use levi_ui::icon::Icon;
 use levi_ui::state::{DisabledReason, InteractionState};
-use levi_ui::tokens::{ColorToken, OpacityToken, color, opacity};
+use levi_ui::tokens::{ColorToken, OpacityToken, SpacingToken, color, opacity, spacing};
 use levi_ui::widget::{Menu, MenuItem, MenuLeading, MenuTone, MenuTrailing, Submenu};
 
-use crate::support::{ClickProbe, PaintCapture, Sample, ShapeText, WarnLog};
+use crate::support::{ClickLog, ClickProbe, PaintCapture, Sample, ShapeText, WarnLog};
 
 struct ItemPaint;
 
@@ -183,4 +185,81 @@ fn submenu_opens_to_the_right() {
     harness.run();
     let Some(lime) = ClickProbe::text_rect(&harness, "Lime") else { panic!("the submenu did not open") };
     assert!(lime.left() > colour.right(), "{lime:?} is not right of {colour:?}");
+}
+
+struct MenuPanel;
+
+impl MenuPanel {
+    // the painted menu panel, found by its fill
+    fn shape(harness: &Harness<'static, ClickLog<bool>>) -> Option<RectShape> {
+        let shapes: Vec<Shape> = harness.output().shapes.iter().map(|clipped| clipped.shape.clone()).collect();
+        PaintCapture::rects(&shapes).into_iter().find(|r| r.fill == color::BgRaised::VALUE)
+    }
+
+    fn from_button() -> Harness<'static, ClickLog<bool>> {
+        ClickProbe::harness_with(false, |ui, open| {
+            let button = ui.allocate_response(vec2(120.0, 30.0), Sense::click());
+            *open = Menu::show_from_button(&button, |ui| {
+                MenuItem::new(Sample::text("Rename scene…")).show(ui);
+            });
+            button
+        })
+    }
+}
+
+#[test]
+fn show_from_button_toggles_on_a_click_and_closes_on_a_click_outside() {
+    let mut harness = MenuPanel::from_button();
+    assert!(!harness.state().value);
+    assert!(MenuPanel::shape(&harness).is_none());
+
+    ClickProbe::click(&mut harness);
+    assert!(harness.state().value, "the click did not open the menu");
+    assert!(ClickProbe::texts(&harness).contains(&"Rename scene…".to_owned()));
+
+    ClickProbe::click(&mut harness);
+    assert!(!harness.state().value, "a second click did not close the menu");
+    assert!(!ClickProbe::texts(&harness).contains(&"Rename scene…".to_owned()));
+
+    ClickProbe::click(&mut harness);
+    assert!(harness.state().value);
+    ClickProbe::click_at(&mut harness, pos2(700.0, 500.0));
+    assert!(!harness.state().value, "a click outside did not close the menu");
+}
+
+#[test]
+fn show_from_button_draws_below_the_button_left_edge_at_the_menu_width() {
+    let mut harness = MenuPanel::from_button();
+    let button = harness.state().rect;
+    ClickProbe::click(&mut harness);
+    let Some(shape) = MenuPanel::shape(&harness) else { panic!("the menu panel was not drawn") };
+    let panel = shape.rect;
+    assert_eq!(panel.left(), button.left());
+    assert!(panel.top() >= button.bottom(), "{panel:?} overlaps {button:?}");
+    let padding = <spacing::S as SpacingToken>::VALUE;
+    assert_eq!(panel.width(), Menu::inner_width() + (padding + shape.stroke.width) * 2.0);
+}
+
+#[test]
+fn show_at_draws_at_the_point_and_a_click_outside_closes_it() {
+    let popup = Id::unique("show-at-menu-test");
+    let at = pos2(300.0, 200.0);
+    let mut harness = ClickProbe::harness_with(false, move |ui, open| {
+        let anchor = ui.allocate_response(vec2(10.0, 10.0), Sense::hover());
+        *open = Menu::show_at(ui, popup, at, |ui| {
+            MenuItem::new(Sample::text("Rename scene…")).show(ui);
+        });
+        anchor
+    });
+    assert!(!harness.state().value, "the menu was open before it was asked to open");
+
+    Popup::open_id(&harness.ctx, popup);
+    harness.run();
+    assert!(harness.state().value, "the menu did not open");
+    let Some(shape) = MenuPanel::shape(&harness) else { panic!("the menu panel was not drawn") };
+    let panel = shape.rect;
+    assert_eq!(panel.min, at);
+
+    ClickProbe::click_at(&mut harness, pos2(700.0, 500.0));
+    assert!(!harness.state().value, "a click outside did not close the menu");
 }

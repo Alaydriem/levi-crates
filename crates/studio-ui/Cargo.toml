@@ -3,6 +3,8 @@ name = "studio-ui"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
 publish.workspace = true
 autotests = false
 
@@ -29,6 +31,7 @@ egui.workspace = true
 levi-i18n.workspace = true
 levi-ui.workspace = true
 curia.workspace = true
+png = "0.18.1"
 
 [features]
 # The live component pages: one gallery page per Paper artboard, for the gallery example and the snapshot tests

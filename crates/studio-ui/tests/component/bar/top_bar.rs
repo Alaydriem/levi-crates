@@ -1,6 +1,6 @@
 use levi_ui::icon::Icon;
 use levi_ui::tokens::SpacingToken;
-use studio_ui::component::bar::{StudioMode, TopBar, TopBarAction, TopBarView};
+use studio_ui::component::bar::{StudioMode, TopBar, TopBarAction, TopBarControl, TopBarView};
 use studio_ui::tokens::selector::SceneColor;
 use studio_ui::tokens::spacing;
 
@@ -113,5 +113,51 @@ fn a_long_title_keeps_the_controls_in_the_bar() {
         _ => None,
     }) {
         assert!(rect.right() < preview.left(), "{text} runs into the mode switch");
+    }
+}
+
+fn placed(mode: StudioMode) -> (egui::Rect, Vec<(TopBarControl, egui::Rect)>) {
+    let mut probe = UiProbe::new(1920.0);
+    let view = TopBarView { can_redo: true, ..view(mode, true) };
+    let show = |ui: &mut egui::Ui| {
+        let (_, places) = TopBar::new(&view).show_placed(ui);
+        (ui.min_rect(), places)
+    };
+    probe.frame(Vec::new(), show);
+    probe.frame(Vec::new(), show).0
+}
+
+#[test]
+fn top_bar_places_all_11_controls_inside_the_bar() {
+    let (bar, places) = placed(StudioMode::Edit);
+    assert_eq!(places.len(), 11, "{places:?}");
+    for (control, rect) in &places {
+        assert!(bar.contains_rect(*rect), "{control:?} {rect:?} outside {bar:?}");
+    }
+}
+
+#[test]
+fn a_click_at_the_centre_of_each_placed_control_gives_its_action() {
+    let cases = [
+        (TopBarControl::SceneChip, StudioMode::Edit, TopBarAction::OpenSceneSwitcher),
+        (TopBarControl::Edit, StudioMode::Preview, TopBarAction::SetMode(StudioMode::Edit)),
+        (TopBarControl::Preview, StudioMode::Edit, TopBarAction::SetMode(StudioMode::Preview)),
+        (TopBarControl::Undo, StudioMode::Edit, TopBarAction::Undo),
+        (TopBarControl::Redo, StudioMode::Edit, TopBarAction::Redo),
+        (TopBarControl::UndoHistory, StudioMode::Edit, TopBarAction::OpenUndoHistory),
+        (TopBarControl::Settings, StudioMode::Edit, TopBarAction::OpenSettings),
+        (TopBarControl::Close, StudioMode::Edit, TopBarAction::CloseReplay),
+        (TopBarControl::Coverage, StudioMode::Edit, TopBarAction::OpenCoverage),
+        (TopBarControl::Queue, StudioMode::Edit, TopBarAction::OpenQueue),
+        (TopBarControl::Export, StudioMode::Edit, TopBarAction::OpenExport),
+    ];
+    for (control, mode, expected) in cases {
+        let (_, places) = placed(mode);
+        let rect = places.iter().find(|(c, _)| *c == control).unwrap_or_else(|| panic!("no {control:?}")).1;
+        let mut probe = UiProbe::new(1920.0);
+        let view = TopBarView { can_redo: true, ..view(mode, true) };
+        let show = |ui: &mut egui::Ui| TopBar::new(&view).show(ui);
+        probe.shapes(show);
+        assert_eq!(probe.click(rect.center(), show), vec![expected], "{control:?}");
     }
 }

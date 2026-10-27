@@ -2,12 +2,13 @@ use egui::Ui;
 
 use super::GalleryState;
 use super::sheet::{
-    AvatarSheet, BannerSheet, CardFrameSheet, CheckboxSheet, ChipSheet, ColourFieldSheet, ConfirmPopoverSheet,
-    CornerButtonSheet, DragFieldSheet, DropdownSheet, EmptyStateCardSheet, EmptyStateSheet, IconButtonSheet,
-    KeyGlyphsSheet, LegendCardSheet, ListRowSheet, LoadingStateSheet, MenuItemRadioSheet, MenuItemSheet,
-    ModalFrameSheet, NavEntrySheet, PageHeaderSheet, SectionCardSheet, SectionHeaderSheet, SegmentedGridSheet,
-    SegmentedSheet, SliderSheet, SplitterAndScrollSheet, StatusPillSheet, SwatchRowSheet, TabRowSheet, TableSheet,
-    TextButtonSheet, TextFieldSheet, TextFieldSwatchSheet, ToastLineSheet, ToastSheet, ToggleSheet, ValueRowSheet,
+    AvatarSheet, BannerSheet, CaptionSheet, CardFrameSheet, CarouselSheet, CheckboxSheet, ChipSheet, ColourFieldSheet,
+    ConfirmPopoverSheet, CornerButtonSheet, DragFieldSheet, DropdownSheet, EmptyStateCardSheet, EmptyStateSheet,
+    GridPlacerSheet, IconButtonSheet, KeyGlyphsSheet, LegendCardSheet, ListRowSheet, LoadingStateSheet,
+    MenuItemRadioSheet, MenuItemSheet, ModalFrameSheet, NavEntrySheet, PageHeaderSheet, SectionCardSheet,
+    SectionHeaderSheet, SegmentedGridSheet, SegmentedSheet, SliderSheet, SplitterAndScrollSheet, StatusPillSheet,
+    SwatchRowSheet, TabRowSheet, TableSheet, TextButtonSheet, TextFieldSheet, TextFieldSwatchSheet, ToastLineSheet,
+    ToastSheet, ToggleSheet, ValueRowSheet,
 };
 
 /// One gallery page per Paper widget sheet, in Paper order.
@@ -52,12 +53,15 @@ pub enum GallerySheet {
     TextFieldSwatch,
     SegmentedGrid,
     MenuItemRadio,
+    GridPlacer,
+    Caption,
+    Carousel,
 }
 
 impl GallerySheet {
     /// The width of every Paper widget artboard.
     pub const WIDTH: f32 = 1240.0;
-    pub const ALL: [Self; 39] = [
+    pub const ALL: [Self; 42] = [
         Self::Toggle,
         Self::Slider,
         Self::IconButton,
@@ -97,6 +101,9 @@ impl GallerySheet {
         Self::TextFieldSwatch,
         Self::SegmentedGrid,
         Self::MenuItemRadio,
+        Self::GridPlacer,
+        Self::Caption,
+        Self::Carousel,
     ];
 
     /// The Paper sheet name, shown in the gallery's page list.
@@ -141,6 +148,9 @@ impl GallerySheet {
             Self::TextFieldSwatch => "Text field, Leading swatch",
             Self::SegmentedGrid => "Segmented, Grid (two rows)",
             Self::MenuItemRadio => "Menu item, Radio",
+            Self::GridPlacer => "Grid placer",
+            Self::Caption => "Caption",
+            Self::Carousel => "Carousel",
         }
     }
 
@@ -186,6 +196,9 @@ impl GallerySheet {
             Self::TextFieldSwatch => "text_field_swatch",
             Self::SegmentedGrid => "segmented_grid",
             Self::MenuItemRadio => "menu_item_radio",
+            Self::GridPlacer => "grid_placer",
+            Self::Caption => "caption",
+            Self::Carousel => "carousel",
         }
     }
 
@@ -230,6 +243,9 @@ impl GallerySheet {
             Self::TextFieldSwatch => TextFieldSwatchSheet::show(ui, state),
             Self::SegmentedGrid => SegmentedGridSheet::show(ui, state),
             Self::MenuItemRadio => MenuItemRadioSheet::show(ui, state),
+            Self::GridPlacer => GridPlacerSheet::show(ui, state),
+            Self::Caption => CaptionSheet::show(ui, state),
+            Self::Carousel => CarouselSheet::show(ui, state),
         }
     }
 }

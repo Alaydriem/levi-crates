@@ -7,4 +7,6 @@ pub struct ListRowResponse {
     pub row: Response,
     /// The toggle was switched.
     pub toggled: bool,
+    /// The trailing action button was clicked. A click on it is not a row click.
+    pub action: bool,
 }

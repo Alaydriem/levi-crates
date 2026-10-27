@@ -1,7 +1,7 @@
 use egui::{Ui, vec2};
 use levi_ui::gallery::{Sample, SheetGrid};
 
-use crate::component::library::{HeroCard, HeroCardView};
+use crate::component::library::{HeroCard, HeroCardView, HeroProblem};
 use crate::gallery::GalleryState;
 
 /// Paper: Editor components, `Editor / Hero card` (`G64-0`). A card that opens and a broken one. The studio bundles
@@ -14,16 +14,20 @@ impl HeroCardPage {
 
     pub fn show(ui: &mut Ui, _state: &mut GalleryState) {
         SheetGrid::page(ui, "Hero card", |ui| {
+            let problem = || HeroProblem {
+                title: Sample::text("Game version not supported"),
+                reason: Sample::text("This recording was made with a game protocol this version cannot play."),
+            };
             let cards = [
-                ("READY", false, "Nether trip", ["02:14:08", "6 players", "5 scenes", "Today, 14:02"]),
-                ("BROKEN", true, "Old realm backup", ["00:00:00", "0 players", "0 scenes", "Sep 30"]),
+                ("READY", None, "Nether trip", ["02:14:08", "6 players", "5 scenes", "Today, 14:02"]),
+                ("BROKEN", Some(problem()), "Old realm backup", ["02:14:08", "6 players", "5 scenes", "Sep 30"]),
             ];
-            for (caption, broken, title, meta) in cards {
+            for (caption, problem, title, meta) in cards {
                 let view = HeroCardView {
                     title: Sample::text(title),
                     meta: meta.iter().map(|fact| Sample::text(fact)).collect(),
                     open: Sample::text("Open in editor"),
-                    broken,
+                    problem,
                 };
                 SheetGrid::section(ui, caption, |ui| {
                     HeroCard::new(&view).show(ui, Self::SIZE);

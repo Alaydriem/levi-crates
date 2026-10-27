@@ -119,14 +119,15 @@ fn a_broken_row_fades_the_thumbnail_and_says_why_in_the_danger_colour() {
 }
 
 #[test]
-fn a_row_without_a_picture_shows_a_plain_card() {
+fn a_row_without_a_picture_shows_the_placeholder() {
     let mut view = RowSample::view(false, false);
     view.thumbnail = None;
     let shapes = RowSample::shapes(&view, false);
-    assert!(UiProbe::rects(&shapes).iter().all(|r| r.fill_texture_id() != RowSample::TEXTURE));
-    assert!(
-        UiProbe::rects(&shapes).iter().any(|r| r.rect.size() == vec2(89.0, 50.0) && r.fill == color::BgRaised::VALUE)
-    );
+    // a rect with no texture reports the default id
+    let thumbnail = UiProbe::rects(&shapes)
+        .into_iter()
+        .find(|r| r.rect.size() == vec2(89.0, 50.0) && r.fill_texture_id() != TextureId::default());
+    assert!(thumbnail.is_some(), "no placeholder thumbnail");
 }
 
 #[test]

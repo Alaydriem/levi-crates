@@ -17,6 +17,7 @@ use levi_ui::tokens::rule::Elevation;
 use levi_ui::tokens::{ColorToken, OpacityToken, SpacingToken, color, opacity, spacing};
 use levi_ui::widget::MetaSeparator;
 
+use crate::component::library::ReplayPlaceholder;
 use crate::tokens::color as studio_color;
 
 /// Paper: Screen / Library (`DX-0`), the rows of the replay list, and `65T-0` for the broken look. A thumbnail with
@@ -106,16 +107,10 @@ impl<'a> ReplayRow<'a> {
     fn paint_thumbnail(&self, ui: &Ui, thumb: Rect) {
         let painter = ui.painter();
         let corner = Corner::Control.radius(thumb);
-        match self.view.thumbnail {
-            Some(picture) => {
-                let keep = if matches!(self.view.note, ReplayRowNote::Broken(_)) { Self::BROKEN_PICTURE } else { 1.0 };
-                let tint = Color32::WHITE.gamma_multiply(keep);
-                painter.add(
-                    RectShape::filled(thumb, corner, tint).with_texture(picture.texture, picture.cover(thumb.size())),
-                );
-            }
-            None => Draw::fill(painter, thumb, Corner::Control, <color::BgRaised as ColorToken>::VALUE),
-        }
+        let keep = if matches!(self.view.note, ReplayRowNote::Broken(_)) { Self::BROKEN_PICTURE } else { 1.0 };
+        let tint = Color32::WHITE.gamma_multiply(keep);
+        let picture = self.view.thumbnail.unwrap_or_else(|| ReplayPlaceholder::picture(ui.ctx()));
+        painter.add(RectShape::filled(thumb, corner, tint).with_texture(picture.texture, picture.cover(thumb.size())));
         let strip = Rect::from_min_max(pos2(thumb.left(), thumb.bottom() - Self::STRIP), thumb.max);
         let strip_corner = CornerRadius { nw: 0, ne: 0, sw: corner.sw, se: corner.se };
         painter.rect_filled(strip, strip_corner, <studio_color::PictureStrip as ColorToken>::VALUE);

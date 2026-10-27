@@ -11,11 +11,12 @@ use crate::tokens::{ColorToken, SpacingToken, color, spacing};
 use crate::widget::{Chip, ChipKind, ChipTone};
 
 /// Paper: Mod manager, `Widget / Nav entry`. A page in a side list: an icon, a label, and a
-/// warning count at the right when there is one. The whole row is the click target.
+/// warning count or a plain tally at the right when there is one. The whole row is the click target.
 pub struct NavEntry {
     icon: Icon,
     text: Text,
     count: u32,
+    tally: Option<u32>,
     selected: bool,
     disabled: Option<DisabledReason>,
 }
@@ -24,15 +25,23 @@ impl NavEntry {
     /// Paper: Nav entry, the row height.
     pub const ROW: f32 = 48.0;
     const LABEL: TextStyle = TextStyle::new(TypeSize::Body, FontFace::Regular);
+    const TALLY: TextStyle = TextStyle::new(TypeSize::Note, FontFace::Regular);
 
     pub fn new(icon: Icon, text: Text) -> Self {
-        Self { icon, text, count: 0, selected: false, disabled: None }
+        Self { icon, text, count: 0, tally: None, selected: false, disabled: None }
     }
 
     /// A warning chip with `count` at the right, shown when it is above 0. With a count the icon
     /// is WARNING in `--color-warning`.
     pub fn count(mut self, count: u32) -> Self {
         self.count = count;
+        self
+    }
+
+    /// A neutral number at the right, `--text-note` in `--color-text-faint`, drawn for every value
+    /// including 0. The icon does not change. A `count` above 0 replaces it.
+    pub fn tally(mut self, tally: u32) -> Self {
+        self.tally = Some(tally);
         self
     }
 
@@ -92,6 +101,13 @@ impl NavEntry {
             let place = Rect::from_min_size(pos2(right - size.x, rect.center().y - size.y / 2.0), size);
             chip.paint(&painter, place, InteractionState::Rest);
             right = place.left() - gap;
+        } else if let Some(tally) = self.tally {
+            let faint = <color::TextFaint as ColorToken>::VALUE;
+            let number = UiText::resolve(painter.ctx(), &Text::user(UserText::from_model(tally.to_string())));
+            let galley = Draw::galley(&painter, &number, Self::TALLY, faint, TextFit::Line);
+            let origin = pos2(right - galley.size().x, rect.center().y - galley.size().y / 2.0);
+            right = origin.x - gap;
+            painter.galley(origin, galley, faint);
         }
         let left = slot.right() + gap;
         let text = <color::Text as ColorToken>::VALUE;

@@ -1,9 +1,7 @@
-use egui::{
-    Align, Align2, CursorIcon, Layout, Painter, Pos2, Rangef, Rect, Response, Sense, Ui, UiBuilder, pos2, vec2,
-};
+use egui::{Align2, CursorIcon, Painter, Pos2, Rangef, Rect, Response, Sense, Ui, UiBuilder, pos2, vec2};
 use levi_i18n::text::Text;
 
-use super::{TableColumn, TableLayout, TableRowKind};
+use super::{TableAlign, TableColumn, TableLayout, TableRowKind, TableRowSize};
 use crate::LeviUiMessage;
 use crate::draw::{Corner, Draw, TextFit, TextStyle, TypeSize};
 use crate::font::FontFace;
@@ -19,13 +17,11 @@ use crate::tokens::{ColorToken, OpacityToken, SpacingToken, color, opacity, spac
 pub struct TableRow<'c> {
     columns: &'c [TableColumn],
     kind: TableRowKind,
+    size: TableRowSize,
+    aligns: &'c [TableAlign],
 }
 
 impl<'c> TableRow<'c> {
-    /// Paper: Table, a row's least height.
-    const MIN_HEIGHT: f32 = 68.0;
-    /// Paper: Table, the top and bottom room around a row's content.
-    const PAD_Y: f32 = 20.0;
     /// Paper: Table, the gap between a line and the one under it in a cell.
     const LINE_GAP: f32 = 2.0;
     const HELP: TextStyle = TextStyle::new(TypeSize::Help, FontFace::Regular);
@@ -34,7 +30,20 @@ impl<'c> TableRow<'c> {
     const CHORD: usize = 1;
 
     pub fn new(columns: &'c [TableColumn], kind: TableRowKind) -> Self {
-        Self { columns, kind }
+        Self { columns, kind, size: TableRowSize::Regular, aligns: &[] }
+    }
+
+    /// The row's size; the default is `TableRowSize::Regular`.
+    pub fn size(mut self, size: TableRowSize) -> Self {
+        self.size = size;
+        self
+    }
+
+    /// Each column's alignment, in column order; a column without one starts at the start edge. A
+    /// cell's widgets are laid out toward its aligned edge.
+    pub fn aligns(mut self, aligns: &'c [TableAlign]) -> Self {
+        self.aligns = aligns;
+        self
     }
 
     /// Shows the row; `cells` draws column `index` into the `Ui` it is given. While capturing, the
@@ -42,7 +51,7 @@ impl<'c> TableRow<'c> {
     pub fn show(self, ui: &mut Ui, mut cells: impl FnMut(usize, &mut Ui)) -> Response {
         let margin = if self.kind.boxed() { <spacing::Xs as SpacingToken>::VALUE } else { 0.0 };
         let content = self.content_height();
-        let height = (content + 2.0 * Self::PAD_Y).max(Self::MIN_HEIGHT) + 2.0 * margin;
+        let height = (content + 2.0 * self.size.pad_y()).max(self.size.min_height()) + 2.0 * margin;
         let disabled = matches!(self.kind, TableRowKind::Disabled(_));
         let sense = if disabled { Sense::hover() } else { Sense::click() };
         let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), height), sense);
@@ -65,7 +74,8 @@ impl<'c> TableRow<'c> {
                 }
                 _ => *cell,
             };
-            let mut child = ui.new_child(UiBuilder::new().max_rect(place).layout(Layout::left_to_right(Align::Center)));
+            let align = self.aligns.get(index).copied().unwrap_or_default();
+            let mut child = ui.new_child(UiBuilder::new().max_rect(place).layout(align.layout()));
             child.style_mut().interaction.selectable_labels = false;
             if disabled {
                 // as `SettingRow` does: a muted row's cell widgets take no clicks either. egui's own

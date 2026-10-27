@@ -15,6 +15,8 @@ pub struct TimelineViewModel {
     /// The replay's length in seconds.
     pub length: f64,
     pub checkpoints: Vec<f64>,
+    /// The parts the user recorded, as `(start, end)` seconds with start before end.
+    pub recorded: Vec<(f64, f64)>,
     pub scenes: Vec<SceneBand>,
     pub realms: Vec<RealmSegment>,
     pub tracks: Vec<TimelineTrack>,

@@ -155,3 +155,32 @@ fn the_footer_has_a_line_above_it() {
     });
     assert!(line, "no line above the footer");
 }
+
+#[test]
+fn show_placed_gives_the_rect_of_every_row_in_order() {
+    let view = ListSample::view();
+    let mut probe = UiProbe::sized(600.0, 600.0);
+    let show = |ui: &mut egui::Ui| {
+        let (_, places) = SceneSwitcherList::new(&view).show_placed(ui);
+        (ui.min_rect(), places)
+    };
+    probe.frame(Vec::new(), show);
+    let (list, places) = probe.frame(Vec::new(), show).0;
+    let actions: Vec<SceneSwitcherListAction> = places.iter().map(|(action, _)| *action).collect();
+    assert_eq!(
+        actions,
+        vec![
+            SceneSwitcherListAction::SelectOriginal,
+            SceneSwitcherListAction::SelectScene(0),
+            SceneSwitcherListAction::SelectScene(1),
+            SceneSwitcherListAction::SelectScene(2),
+            SceneSwitcherListAction::Footer(0),
+            SceneSwitcherListAction::Footer(1),
+        ]
+    );
+    for (action, rect) in &places {
+        assert!(list.contains_rect(*rect), "{action:?} {rect:?} outside {list:?}");
+        assert!(rect.width() > 0.0 && rect.height() > 0.0);
+    }
+    assert!(places.windows(2).all(|pair| pair[0].1.bottom() <= pair[1].1.top()));
+}

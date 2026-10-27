@@ -96,3 +96,20 @@ fn a_chip_under_its_label_is_cut_to_the_text_column() {
     // the text column ends before the toggle
     assert!(chip.right() <= row.right() - Toggle::TRACK.x, "the chip {chip:?} reaches the toggle in {row:?}");
 }
+
+#[test]
+fn label_uses_available_width_before_truncating() {
+    let label = "Join again by itself after a failed join, and keep trying every few seconds until it works";
+    let harness = ClickProbe::harness_with((), |ui, _| {
+        ui.allocate_ui(egui::vec2(720.0, 400.0), |ui| {
+            SettingRow::new(Sample::text(label), SettingControl::Other(Box::new(|ui, _| ui.label("On")))).show(ui)
+        })
+        .inner
+    });
+    // the galley keeps the whole text; `elided` says the row was cut with an ellipsis
+    let cut = harness.output().shapes.iter().find_map(|clipped| match &clipped.shape {
+        egui::Shape::Text(shape) if shape.galley.text() == label => Some(shape.galley.elided),
+        _ => None,
+    });
+    assert_eq!(cut, Some(false), "the label is missing or cut with an ellipsis");
+}

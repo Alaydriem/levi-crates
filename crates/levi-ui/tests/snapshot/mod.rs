@@ -197,3 +197,18 @@ fn snapshot_segmented_grid() {
 fn snapshot_menu_item_radio() {
     SheetSnapshot::check(GallerySheet::MenuItemRadio);
 }
+
+#[test]
+fn snapshot_grid_placer() {
+    SheetSnapshot::check(GallerySheet::GridPlacer);
+}
+
+#[test]
+fn snapshot_caption() {
+    SheetSnapshot::check(GallerySheet::Caption);
+}
+
+#[test]
+fn snapshot_carousel() {
+    SheetSnapshot::check(GallerySheet::Carousel);
+}

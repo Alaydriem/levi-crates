@@ -1,7 +1,7 @@
-use egui::{Align2, Rangef, Response, Sense, Ui, vec2};
+use egui::{Rangef, Response, Sense, Ui, vec2};
 use levi_i18n::text::Text;
 
-use super::{TableColumn, TableLayout};
+use super::{TableAlign, TableColumn, TableLayout};
 use crate::draw::{Draw, TextFit, TextStyle, TypeSize};
 use crate::font::FontFace;
 use crate::tokens::{ColorToken, SpacingToken, color, spacing};
@@ -10,6 +10,7 @@ use crate::tokens::{ColorToken, SpacingToken, color, spacing};
 /// column over a line. It takes the full width.
 pub struct TableHeader {
     columns: Vec<(Text, TableColumn)>,
+    aligns: Vec<TableAlign>,
 }
 
 impl TableHeader {
@@ -18,7 +19,13 @@ impl TableHeader {
     const HEAD: TextStyle = TextStyle::new(TypeSize::Caption, FontFace::Semibold).tracked();
 
     pub fn new(columns: Vec<(Text, TableColumn)>) -> Self {
-        Self { columns }
+        Self { columns, aligns: Vec::new() }
+    }
+
+    /// Each column's alignment, in column order; a column without one starts at the start edge.
+    pub fn aligns(mut self, aligns: &[TableAlign]) -> Self {
+        self.aligns = aligns.to_vec();
+        self
     }
 
     pub fn show(self, ui: &mut Ui) -> Response {
@@ -26,16 +33,10 @@ impl TableHeader {
         let painter = ui.painter();
         let faint = <color::TextFaint as ColorToken>::VALUE;
         let columns: Vec<TableColumn> = self.columns.iter().map(|(_, column)| *column).collect();
-        for ((head, _), cell) in self.columns.iter().zip(TableLayout::cells(&columns, rect)) {
-            Draw::text(
-                painter,
-                cell.left_center(),
-                Align2::LEFT_CENTER,
-                head,
-                Self::HEAD,
-                faint,
-                TextFit::Truncate(cell.width()),
-            );
+        for (index, ((head, _), cell)) in self.columns.iter().zip(TableLayout::cells(&columns, rect)).enumerate() {
+            let align = self.aligns.get(index).copied().unwrap_or_default();
+            let (at, anchor) = align.anchor(cell);
+            Draw::text(painter, at, anchor, head, Self::HEAD, faint, TextFit::Truncate(cell.width()));
         }
         let line = <color::Line as ColorToken>::VALUE;
         Draw::divider(

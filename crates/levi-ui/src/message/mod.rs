@@ -17,6 +17,12 @@ pub enum LeviUiMessage {
     InvalidColour,
     EnterANumber,
     Cancel,
+    NotPlaced,
+    GridCell,
+    DropHere,
+    PlaceHere,
+    Taken,
+    Unplace,
 }
 
 impl Message for LeviUiMessage {
@@ -35,6 +41,12 @@ impl Message for LeviUiMessage {
         Self::InvalidColour,
         Self::EnterANumber,
         Self::Cancel,
+        Self::NotPlaced,
+        Self::GridCell,
+        Self::DropHere,
+        Self::PlaceHere,
+        Self::Taken,
+        Self::Unplace,
     ];
 
     fn index(self) -> usize {
@@ -56,6 +68,12 @@ impl Message for LeviUiMessage {
             Self::InvalidColour => "Use #RRGGBB or #RRGGBBAA.",
             Self::EnterANumber => "Enter a number",
             Self::Cancel => "Cancel",
+            Self::NotPlaced => "NOT PLACED · {count}",
+            Self::GridCell => "Cell {number}",
+            Self::DropHere => "Drop here",
+            Self::PlaceHere => "Place here",
+            Self::Taken => "Taken",
+            Self::Unplace => "Back to the tray",
         }
     }
 
@@ -78,6 +96,16 @@ impl Message for LeviUiMessage {
             Self::PressAKey => Some("Shown in a key chord cell while the key is being captured"),
             Self::AlsoBoundBy => Some("{name} is the other mod that uses the same key chord"),
             Self::ChangedInGame => Some("{value} is the setting value the game wrote while an edit was open"),
+            Self::NotPlaced => {
+                Some("The grid placer's tray heading, in upper case; {count} is the number of pieces not on the grid")
+            }
+            Self::GridCell => Some("The label of one grid placer cell; {number} counts the cells from 1, row by row"),
+            Self::DropHere => Some("On an empty grid cell while a piece is dragged over it"),
+            Self::PlaceHere => Some("On the grid cell the keyboard reached while a piece is held"),
+            Self::Taken => {
+                Some("On a filled grid cell while another piece is dragged over it; the cell refuses the drop")
+            }
+            Self::Unplace => Some("The tooltip of the button that takes a piece off a grid cell"),
             _ => None,
         }
     }
